@@ -292,6 +292,15 @@
 
     .btn-success:hover { background: #059669; }
 
+    .btn-share {
+      background: #0ea5e9;
+      color: white;
+      flex: 1;
+      justify-content: center;
+    }
+
+    .btn-share:hover { background: #0284c7; }
+
     .action-row { display: flex; gap: 8px; margin-bottom: 12px; }
 
     /* カスタムテンプレート */
@@ -309,6 +318,124 @@
       margin-bottom: 14px;
       line-height: 1.5;
     }
+
+    /* シェアURLボックス */
+    .share-url-box {
+      background: #f0f9ff;
+      border: 1.5px solid #bae6fd;
+      border-radius: 10px;
+      padding: 12px 14px;
+      margin-bottom: 14px;
+      display: none;
+    }
+
+    .share-url-label {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: #0284c7;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .share-url-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .share-url-text {
+      flex: 1;
+      font-size: 0.75rem;
+      color: #444;
+      background: white;
+      border: 1px solid #e0f2fe;
+      border-radius: 6px;
+      padding: 7px 10px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      cursor: text;
+      user-select: all;
+    }
+
+    .btn-copy-url {
+      padding: 7px 12px;
+      background: #0ea5e9;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .btn-copy-url:hover { background: #0284c7; }
+
+    /* インポートバナー */
+    .import-banner {
+      background: linear-gradient(135deg, #ecfdf5, #d1fae5);
+      border: 1.5px solid #6ee7b7;
+      border-radius: 12px;
+      padding: 14px 16px;
+      margin-bottom: 16px;
+      display: none;
+    }
+
+    .import-banner h4 { font-size: 0.9rem; font-weight: 700; color: #059669; margin-bottom: 4px; }
+    .import-banner p { font-size: 0.78rem; color: #065f46; margin-bottom: 10px; }
+    .import-banner .btn-row { display: flex; gap: 8px; }
+
+    /* エクスポート/インポートボタン */
+    .io-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .btn-export {
+      flex: 1;
+      padding: 10px;
+      background: #f0f2f5;
+      color: #555;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: inherit;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      transition: background 0.2s;
+    }
+
+    .btn-export:hover { background: #e4e6eb; }
+
+    .btn-import-label {
+      flex: 1;
+      padding: 10px;
+      background: #f0f9ff;
+      color: #0284c7;
+      border: 1.5px dashed #bae6fd;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: inherit;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      transition: background 0.2s;
+      text-align: center;
+    }
+
+    .btn-import-label:hover { background: #e0f2fe; }
 
     .saved-list { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
 
@@ -341,6 +468,7 @@
 
     .btn-use { background: #667eea; color: white; }
     .btn-del { background: #fee2e2; color: #e05; }
+    .btn-share-tiny { background: #e0f2fe; color: #0284c7; }
 
     /* トースト */
     .toast {
@@ -410,6 +538,16 @@
 
 <div class="container">
 
+  <!-- シェアURLからのインポートバナー -->
+  <div class="import-banner" id="import-banner">
+    <h4>📨 テンプレートが共有されています</h4>
+    <p id="import-banner-desc">共有されたカスタムテンプレートをインポートできます。</p>
+    <div class="btn-row">
+      <button class="btn btn-success" style="font-size:0.85rem;padding:8px 16px" onclick="importFromUrl()">✅ インポートする</button>
+      <button class="btn btn-secondary" style="font-size:0.85rem;padding:8px 16px" onclick="dismissImportBanner()">✕ 閉じる</button>
+    </div>
+  </div>
+
   <!-- タブ -->
   <div class="tabs">
     <button class="tab-btn active" onclick="switchTab('builder')">📝 ビルダー</button>
@@ -457,7 +595,6 @@
     <!-- Step3: 入力フォーム -->
     <div id="step3" style="display:none">
 
-      <!-- テンプレートプレビュー（リアルタイム反映） -->
       <div class="tpl-preview-card">
         <div class="card-label">
           <span>📄</span> テンプレートプレビュー
@@ -466,7 +603,6 @@
         <div class="tpl-preview-content" id="tpl-live-preview"></div>
       </div>
 
-      <!-- 穴埋め入力フィールド -->
       <div class="form-card">
         <div class="card-header">
           <h3 id="form-title">✏️ 穴埋め入力</h3>
@@ -486,9 +622,20 @@
         <h3>生成されたプロンプト</h3>
         <div class="preview-text" id="result-text"></div>
       </div>
+
+      <!-- シェアURLボックス -->
+      <div class="share-url-box" id="share-url-box">
+        <div class="share-url-label">🔗 シェアURL（このURLを送るだけで共有できます）</div>
+        <div class="share-url-row">
+          <div class="share-url-text" id="share-url-text"></div>
+          <button class="btn-copy-url" onclick="copyShareUrl()">コピー</button>
+        </div>
+      </div>
+
       <div class="action-row">
         <button class="btn btn-success" onclick="copyPrompt()">📋 コピー</button>
-        <button class="btn btn-secondary" onclick="goStep(3)">← 編集に戻る</button>
+        <button class="btn btn-share" onclick="sharePromptViaUrl()">🔗 URLシェア</button>
+        <button class="btn btn-secondary" onclick="goStep(3)">← 編集</button>
       </div>
       <button class="btn btn-secondary" style="width:100%;margin-bottom:8px" onclick="savePrompt()">💾 このプロンプトを保存</button>
       <button class="btn btn-secondary" style="width:100%" onclick="goStep(1)">🔄 最初からやり直す</button>
@@ -528,6 +675,17 @@
     <!-- 保存済みカスタムテンプレート一覧 -->
     <div class="custom-section" style="margin-top:14px">
       <h3>保存済みカスタムテンプレート</h3>
+      <p>テンプレートをURLで共有したり、JSONファイルでバックアップ・インポートできます。</p>
+
+      <!-- エクスポート/インポートボタン -->
+      <div class="io-row">
+        <button class="btn-export" onclick="exportTemplates()">📤 JSONエクスポート</button>
+        <label class="btn-import-label">
+          📥 JSONインポート
+          <input type="file" accept=".json" style="display:none" onchange="importTemplates(event)">
+        </label>
+      </div>
+
       <div id="custom-template-list">
         <div class="empty-state">
           <div class="icon">📋</div>
@@ -541,7 +699,7 @@
   <div id="tab-saved" class="tab-panel">
     <div class="custom-section">
       <h3>保存済みプロンプト</h3>
-      <p>生成したプロンプトをここに保存して再利用できます。</p>
+      <p>生成したプロンプトをここに保存して再利用できます。🔗ボタンでURLシェアも可能です。</p>
       <div id="saved-list-container">
         <div class="empty-state">
           <div class="icon">📂</div>
@@ -590,7 +748,6 @@ const TEMPLATES = {
 【文字数】{{length}}
 【文体】{{tone}}
 {{points_block}}
-
 構成は「導入→本文（見出し付き）→まとめ」の形式でお願いします。読者が最後まで読みたくなるような、具体的でわかりやすい内容にしてください。`,
     },
     {
@@ -627,7 +784,6 @@ const TEMPLATES = {
 【伝えたい内容】{{content}}
 【目的】{{goal}}
 {{hashtag_block}}
-
 {{platform}}のアルゴリズムとユーザー行動に合わせた、思わず読みたくなる投稿文を3パターン作成してください。`,
     },
   ],
@@ -713,7 +869,6 @@ const TEMPLATES = {
 
 【要約の長さ】{{length}}
 {{focus_block}}
-
 ---
 {{text}}
 ---
@@ -734,7 +889,6 @@ const TEMPLATES = {
 
 【利用シーン・前提】{{context}}
 {{aspects_block}}
-
 比較表（マークダウン形式）と、それぞれが向いているケースのまとめを教えてください。`,
     },
   ],
@@ -839,7 +993,6 @@ const TEMPLATES = {
 【私の知識レベル】{{level}}
 【説明の形式】{{format}}
 {{focus_block}}
-
 理解しやすいよう、具体例も交えて教えてください。`,
     },
     {
@@ -879,7 +1032,6 @@ const TEMPLATES = {
 【対象・スコープ】{{target}}
 【提案先】{{audience}}
 {{extras_block}}
-
 「課題→提案内容→期待効果→実施計画→まとめ」の構成で、説得力のある提案書を作成してください。`,
     },
     {
@@ -903,7 +1055,7 @@ const TEMPLATES = {
     },
   ],
 
-  custom: [], // 動的に追加
+  custom: [],
 };
 
 // ============================================================
@@ -915,6 +1067,7 @@ let state = {
   template: null,
   fieldValues: {},
   generatedPrompt: '',
+  pendingImport: null,
 };
 
 // ============================================================
@@ -924,9 +1077,57 @@ function init() {
   renderCategories();
   loadSavedList();
   loadCustomTemplates();
-
-  // カスタムテンプレート リアルタイムプレビュー
   document.getElementById('custom-body').addEventListener('input', updateCustomPreview);
+  checkUrlShare();
+}
+
+// ============================================================
+// URLシェア確認（ページ読み込み時）
+// ============================================================
+function checkUrlShare() {
+  const hash = location.hash;
+  if (!hash.startsWith('#share=')) return;
+
+  try {
+    const encoded = hash.slice(7);
+    const data = JSON.parse(decodeURIComponent(escape(atob(encoded))));
+
+    if (data.type === 'prompt') {
+      state.generatedPrompt = data.text;
+      document.getElementById('result-text').textContent = data.text;
+      document.getElementById('share-url-box').style.display = 'none';
+      goStep(4);
+      showToast('🔗 シェアされたプロンプトを読み込みました');
+      history.replaceState(null, '', location.pathname);
+
+    } else if (data.type === 'template') {
+      state.pendingImport = data.template;
+      document.getElementById('import-banner-desc').textContent =
+        '「' + data.template.name + '」をあなたのカスタムテンプレートに追加できます。';
+      document.getElementById('import-banner').style.display = 'block';
+      history.replaceState(null, '', location.pathname);
+    }
+  } catch(e) {
+    // 無効なハッシュは無視
+  }
+}
+
+function importFromUrl() {
+  if (!state.pendingImport) return;
+  const t = state.pendingImport;
+  t.id = 'custom_' + Date.now();
+  const customs = JSON.parse(localStorage.getItem('custom_templates') || '[]');
+  customs.unshift(t);
+  localStorage.setItem('custom_templates', JSON.stringify(customs));
+  loadCustomTemplates();
+  dismissImportBanner();
+  switchTab('custom');
+  showToast('✅ テンプレートをインポートしました！');
+}
+
+function dismissImportBanner() {
+  document.getElementById('import-banner').style.display = 'none';
+  state.pendingImport = null;
 }
 
 // ============================================================
@@ -1026,7 +1227,6 @@ function renderForm(template) {
     `;
   }).join('');
 
-  // 初期プレビューを描画
   updateLivePreview();
 }
 
@@ -1041,14 +1241,12 @@ function updateLivePreview() {
   const progress = document.getElementById('field-progress');
   if (!preview) return;
 
-  // 各フィールドの現在値を取得
   const values = {};
   template.fields.forEach(f => {
     const el = document.getElementById(`field-${f.key}`);
     values[f.key] = el ? el.value.trim() : '';
   });
 
-  // 入力済みカウント
   const required = template.fields.filter(f => f.required !== false);
   const filled = required.filter(f => values[f.key]);
   if (progress) {
@@ -1056,8 +1254,6 @@ function updateLivePreview() {
     progress.style.color = filled.length === required.length ? '#10b981' : '#f6a623';
   }
 
-  // テンプレート文字列を分解してHTML化
-  // まず _block 変数のみ処理したベース文字列を作る
   let raw = template.template;
   template.fields.forEach(f => {
     const blockKey = `{{${f.key}_block}}`;
@@ -1068,16 +1264,12 @@ function updateLivePreview() {
     }
   });
 
-  // 通常変数を span に置換（HTMLエスケープしてから）
   const escaped = escHtml(raw);
-
-  // エスケープ済み文字列内の {{key}} を span タグに置換
   const html = escaped.replace(/\{\{([^}]+)\}\}/g, (match, key) => {
     const val = values[key];
     if (val) {
       return `<span class="blank-filled">${escHtml(val)}</span>`;
     } else {
-      // フィールドのラベルを取得
       const field = template.fields.find(f => f.key === key);
       const label = field ? field.label.replace('（任意）','').trim() : key;
       return `<span class="blank-empty">　${label}　</span>`;
@@ -1088,12 +1280,11 @@ function updateLivePreview() {
 }
 
 // ============================================================
-// テンプレートを値で埋めてテキストを生成（共通処理）
+// テンプレートを値で埋めてテキストを生成
 // ============================================================
 function buildPromptText(template, values) {
   let prompt = template.template;
 
-  // _block 変数（任意フィールド）を処理
   template.fields.forEach(f => {
     const blockKey = `{{${f.key}_block}}`;
     if (prompt.includes(blockKey)) {
@@ -1103,13 +1294,11 @@ function buildPromptText(template, values) {
     }
   });
 
-  // 通常変数を置換
   template.fields.forEach(f => {
     const val = values[f.key] || '';
     prompt = prompt.replace(new RegExp(`\\{\\{${f.key}\\}\\}`, 'g'), val);
   });
 
-  // 残った未置換変数をクリア
   prompt = prompt.replace(/\{\{[^}]+_block\}\}/g, '');
 
   return prompt;
@@ -1153,6 +1342,7 @@ function generatePrompt() {
   state.fieldValues = values;
   state.generatedPrompt = buildPromptText(template, values);
   document.getElementById('result-text').textContent = state.generatedPrompt;
+  document.getElementById('share-url-box').style.display = 'none';
   goStep(4);
 }
 
@@ -1162,18 +1352,13 @@ function generatePrompt() {
 function goStep(n) {
   state.step = n;
 
-  // 各ステップのDOM
   [1, 2, 3, 4].forEach(i => {
     document.getElementById(`step${i}`).style.display = i === n ? '' : 'none';
   });
 
-  // ステップ2: テンプレートを描画
   if (n === 2) renderTemplates(state.category);
-
-  // ステップ3: フォームを描画
   if (n === 3) renderForm(state.template);
 
-  // ステップインジケーター更新
   [1, 2, 3, 4].forEach(i => {
     const num = document.getElementById(`sn${i}`);
     const label = document.getElementById(`sl${i}`);
@@ -1203,7 +1388,6 @@ function copyPrompt() {
   if (navigator.clipboard && navigator.clipboard.writeText) {
     navigator.clipboard.writeText(text).then(() => showToast('📋 コピーしました！'));
   } else {
-    // フォールバック
     const ta = document.createElement('textarea');
     ta.value = text;
     ta.style.position = 'fixed';
@@ -1213,6 +1397,74 @@ function copyPrompt() {
     document.execCommand('copy');
     document.body.removeChild(ta);
     showToast('📋 コピーしました！');
+  }
+}
+
+// ============================================================
+// URLシェア（生成済みプロンプト）
+// ============================================================
+function sharePromptViaUrl() {
+  const text = state.generatedPrompt;
+  if (!text) return;
+
+  try {
+    const data = JSON.stringify({ type: 'prompt', text });
+    const encoded = btoa(unescape(encodeURIComponent(data)));
+    const url = location.origin + location.pathname + '#share=' + encoded;
+
+    const box = document.getElementById('share-url-box');
+    document.getElementById('share-url-text').textContent = url;
+    box.style.display = 'block';
+    box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(url).then(() => showToast('🔗 シェアURLをコピーしました！'));
+    } else {
+      showToast('🔗 シェアURLを表示しました');
+    }
+  } catch(e) {
+    showToast('❌ URLの生成に失敗しました');
+  }
+}
+
+function copyShareUrl() {
+  const url = document.getElementById('share-url-text').textContent;
+  if (!url) return;
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(url).then(() => showToast('🔗 URLをコピーしました！'));
+  } else {
+    const ta = document.createElement('textarea');
+    ta.value = url;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    showToast('🔗 URLをコピーしました！');
+  }
+}
+
+// ============================================================
+// URLシェア（カスタムテンプレート）
+// ============================================================
+function shareTemplateViaUrl(id) {
+  const customs = JSON.parse(localStorage.getItem('custom_templates') || '[]');
+  const template = customs.find(t => t.id === id);
+  if (!template) return;
+
+  try {
+    const data = JSON.stringify({ type: 'template', template });
+    const encoded = btoa(unescape(encodeURIComponent(data)));
+    const url = location.origin + location.pathname + '#share=' + encoded;
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(url).then(() => showToast('🔗 テンプレートのシェアURLをコピーしました！'));
+    } else {
+      prompt('このURLをコピーして共有してください:', url);
+    }
+  } catch(e) {
+    showToast('❌ URLの生成に失敗しました');
   }
 }
 
@@ -1232,7 +1484,7 @@ function savePrompt() {
     date: new Date().toLocaleDateString('ja-JP'),
   };
   saved.unshift(entry);
-  if (saved.length > 50) saved.pop(); // 最大50件
+  if (saved.length > 50) saved.pop();
   localStorage.setItem('saved_prompts', JSON.stringify(saved));
   showToast('💾 保存しました！');
   loadSavedList();
@@ -1247,18 +1499,39 @@ function loadSavedList() {
     return;
   }
 
-  container.innerHTML = `<div class="saved-list">${saved.map(s => `
+  container.innerHTML = '<div class="saved-list">' + saved.map(s => `
     <div class="saved-item">
       <div class="saved-item-info">
         <div class="saved-item-name">${escHtml(s.name)} <span style="color:#aaa;font-weight:400;font-size:0.7rem">${s.date}</span></div>
         <div class="saved-item-preview">${escHtml(s.text.substring(0, 60))}...</div>
       </div>
       <div class="saved-item-btns">
+        <button class="btn-tiny btn-share-tiny" onclick="shareSavedPrompt(${s.id})">🔗</button>
         <button class="btn-tiny btn-use" onclick="useSaved(${s.id})">使う</button>
         <button class="btn-tiny btn-del" onclick="deleteSaved(${s.id})">削除</button>
       </div>
     </div>
-  `).join('')}</div>`;
+  `).join('') + '</div>';
+}
+
+function shareSavedPrompt(id) {
+  const saved = JSON.parse(localStorage.getItem('saved_prompts') || '[]');
+  const entry = saved.find(s => s.id === id);
+  if (!entry) return;
+
+  try {
+    const data = JSON.stringify({ type: 'prompt', text: entry.text });
+    const encoded = btoa(unescape(encodeURIComponent(data)));
+    const url = location.origin + location.pathname + '#share=' + encoded;
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(url).then(() => showToast('🔗 シェアURLをコピーしました！'));
+    } else {
+      prompt('このURLをコピーして共有してください:', url);
+    }
+  } catch(e) {
+    showToast('❌ URLの生成に失敗しました');
+  }
 }
 
 function useSaved(id) {
@@ -1268,6 +1541,7 @@ function useSaved(id) {
 
   state.generatedPrompt = entry.text;
   document.getElementById('result-text').textContent = entry.text;
+  document.getElementById('share-url-box').style.display = 'none';
   switchTab('builder');
   goStep(4);
 }
@@ -1292,7 +1566,6 @@ function saveCustomTemplate() {
     return;
   }
 
-  // フィールド抽出
   const matches = [...body.matchAll(/\{\{([^}]+)\}\}/g)];
   const keys = [...new Set(matches.map(m => m[1]))];
   const fields = keys.map(k => ({
@@ -1334,17 +1607,18 @@ function loadCustomTemplates() {
     return customs;
   }
 
-  container.innerHTML = `<div class="saved-list">${customs.map(t => `
+  container.innerHTML = '<div class="saved-list">' + customs.map(t => `
     <div class="saved-item">
       <div class="saved-item-info">
         <div class="saved-item-name">${escHtml(t.name)}</div>
         <div class="saved-item-preview">${escHtml(t.template.substring(0, 50))}...</div>
       </div>
       <div class="saved-item-btns">
+        <button class="btn-tiny btn-share-tiny" onclick="shareTemplateViaUrl('${t.id}')">🔗 シェア</button>
         <button class="btn-tiny btn-del" onclick="deleteCustomTemplate('${t.id}')">削除</button>
       </div>
     </div>
-  `).join('')}</div>`;
+  `).join('') + '</div>';
 
   return customs;
 }
@@ -1357,6 +1631,67 @@ function deleteCustomTemplate(id) {
   showToast('削除しました');
 }
 
+// ============================================================
+// JSONエクスポート
+// ============================================================
+function exportTemplates() {
+  const customs = JSON.parse(localStorage.getItem('custom_templates') || '[]');
+  if (customs.length === 0) {
+    showToast('エクスポートするテンプレートがありません');
+    return;
+  }
+
+  const json = JSON.stringify(customs, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'prompt-templates.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('📤 エクスポートしました');
+}
+
+// ============================================================
+// JSONインポート
+// ============================================================
+function importTemplates(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const imported = JSON.parse(e.target.result);
+      if (!Array.isArray(imported)) throw new Error('invalid format');
+
+      const customs = JSON.parse(localStorage.getItem('custom_templates') || '[]');
+      let count = 0;
+
+      imported.forEach((t, i) => {
+        if (t.name && t.template) {
+          t.id = 'custom_' + Date.now() + '_' + i;
+          customs.unshift(t);
+          count++;
+        }
+      });
+
+      localStorage.setItem('custom_templates', JSON.stringify(customs));
+      loadCustomTemplates();
+      showToast('✅ ' + count + '件のテンプレートをインポートしました');
+    } catch(e) {
+      showToast('❌ ファイルの読み込みに失敗しました');
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+// ============================================================
+// カスタムプレビュー
+// ============================================================
 function updateCustomPreview() {
   const body = document.getElementById('custom-body').value;
   const wrap = document.getElementById('custom-preview-wrap');
@@ -1364,7 +1699,6 @@ function updateCustomPreview() {
 
   if (body.trim()) {
     wrap.style.display = '';
-    // {{変数}} をハイライト表示
     const html = escHtml(body).replace(/\{\{([^}]+)\}\}/g, '<span class="highlight">{{$1}}</span>');
     preview.innerHTML = html;
   } else {
@@ -1381,7 +1715,7 @@ function switchTab(id) {
     btn.classList.toggle('active', ids[i] === id);
   });
   document.querySelectorAll('.tab-panel').forEach(panel => panel.classList.remove('active'));
-  document.getElementById(`tab-${id}`).classList.add('active');
+  document.getElementById('tab-' + id).classList.add('active');
 
   if (id === 'saved') loadSavedList();
   if (id === 'custom') loadCustomTemplates();
