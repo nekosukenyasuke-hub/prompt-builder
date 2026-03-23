@@ -1,0 +1,1414 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AIプロンプトビルダー</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Yu Gothic UI', sans-serif;
+      background: #f0f2f5;
+      color: #1a1a2e;
+      min-height: 100vh;
+    }
+
+    header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 16px 20px;
+      text-align: center;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+
+    header h1 { font-size: 1.4rem; font-weight: 700; }
+    header p { font-size: 0.8rem; opacity: 0.85; margin-top: 4px; }
+
+    .container { max-width: 720px; margin: 0 auto; padding: 16px; }
+
+    /* タブ */
+    .tabs {
+      display: flex;
+      background: white;
+      border-radius: 12px;
+      padding: 4px;
+      margin-bottom: 16px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+      gap: 4px;
+    }
+
+    .tab-btn {
+      flex: 1;
+      padding: 8px 4px;
+      border: none;
+      background: transparent;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #888;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .tab-btn.active {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: white;
+    }
+
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* カテゴリ選択 */
+    .category-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .category-card {
+      background: white;
+      border-radius: 12px;
+      padding: 14px 12px;
+      cursor: pointer;
+      border: 2px solid transparent;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+      transition: all 0.2s;
+      text-align: center;
+    }
+
+    .category-card:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.12); }
+    .category-card.selected { border-color: #667eea; background: #f0eeff; }
+
+    .category-icon { font-size: 1.8rem; margin-bottom: 6px; }
+    .category-name { font-size: 0.85rem; font-weight: 600; color: #333; }
+    .category-desc { font-size: 0.7rem; color: #888; margin-top: 2px; }
+
+    /* テンプレート選択 */
+    .template-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+
+    .template-item {
+      background: white;
+      border-radius: 10px;
+      padding: 12px 14px;
+      cursor: pointer;
+      border: 2px solid transparent;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+      transition: all 0.2s;
+    }
+
+    .template-item:hover { border-color: #aaa; }
+    .template-item.selected { border-color: #667eea; background: #f8f7ff; }
+
+    .template-name { font-size: 0.9rem; font-weight: 700; color: #333; }
+    .template-preview { font-size: 0.75rem; color: #888; margin-top: 4px; line-height: 1.4; }
+
+    /* テンプレートプレビュー（入力と連動） */
+    .tpl-preview-card {
+      background: #1a1a2e;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 14px;
+      position: relative;
+    }
+
+    .tpl-preview-card .card-label {
+      color: #888;
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .tpl-preview-content {
+      color: #c8c8d8;
+      font-size: 0.86rem;
+      line-height: 1.8;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    /* 未入力の穴埋め箇所 */
+    .blank-empty {
+      display: inline-block;
+      background: rgba(246,201,14,0.15);
+      border: 1.5px dashed #f6c90e;
+      border-radius: 4px;
+      color: #f6c90e;
+      font-weight: 700;
+      padding: 0 4px;
+      font-size: 0.82rem;
+    }
+
+    /* 入力済みの穴埋め箇所 */
+    .blank-filled {
+      display: inline-block;
+      background: rgba(102,210,150,0.15);
+      border-radius: 4px;
+      color: #6dd49e;
+      font-weight: 700;
+      padding: 0 4px;
+      font-size: 0.86rem;
+    }
+
+    /* フォーム */
+    .form-card {
+      background: white;
+      border-radius: 12px;
+      padding: 16px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+      margin-bottom: 16px;
+    }
+
+    .form-card .card-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1.5px solid #f0f0f0;
+    }
+
+    .form-card .card-header h3 { font-size: 0.95rem; font-weight: 700; color: #333; flex: 1; }
+    .form-card .card-header .field-count { font-size: 0.75rem; color: #aaa; }
+
+    .field-group { margin-bottom: 14px; }
+
+    .field-label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: #444;
+      margin-bottom: 6px;
+    }
+
+    .field-num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #667eea;
+      color: white;
+      font-size: 0.65rem;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    .field-required { color: #e05; font-size: 0.7rem; margin-left: 2px; }
+
+    input[type="text"], textarea, select {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1.5px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-family: inherit;
+      color: #333;
+      background: #fafafa;
+      transition: border-color 0.2s;
+      -webkit-appearance: none;
+    }
+
+    input[type="text"]:focus, textarea:focus, select:focus {
+      outline: none;
+      border-color: #667eea;
+      background: white;
+    }
+
+    textarea { resize: vertical; min-height: 70px; line-height: 1.5; }
+
+    /* プレビュー */
+    .preview-card {
+      background: #1a1a2e;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 16px;
+      position: relative;
+    }
+
+    .preview-card h3 { color: #aaa; font-size: 0.8rem; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+    .preview-text {
+      color: #e8e8f0;
+      font-size: 0.88rem;
+      line-height: 1.7;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .highlight { color: #f6c90e; font-weight: 600; }
+
+    /* ボタン */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 12px 20px;
+      border: none;
+      border-radius: 10px;
+      font-size: 0.9rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: inherit;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: white;
+      width: 100%;
+      justify-content: center;
+      font-size: 1rem;
+      padding: 14px;
+    }
+
+    .btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
+    .btn-primary:active { transform: translateY(0); }
+
+    .btn-secondary {
+      background: #f0f2f5;
+      color: #555;
+      flex: 1;
+      justify-content: center;
+    }
+
+    .btn-secondary:hover { background: #e4e6eb; }
+
+    .btn-success {
+      background: #10b981;
+      color: white;
+      flex: 1;
+      justify-content: center;
+    }
+
+    .btn-success:hover { background: #059669; }
+
+    .action-row { display: flex; gap: 8px; margin-bottom: 12px; }
+
+    /* カスタムテンプレート */
+    .custom-section { background: white; border-radius: 12px; padding: 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+    .custom-section h3 { font-size: 0.95rem; font-weight: 700; margin-bottom: 8px; color: #444; }
+    .custom-section p { font-size: 0.78rem; color: #888; margin-bottom: 14px; line-height: 1.5; }
+
+    .hint-box {
+      background: #fff8e1;
+      border-left: 3px solid #ffc107;
+      padding: 10px 12px;
+      border-radius: 0 8px 8px 0;
+      font-size: 0.78rem;
+      color: #666;
+      margin-bottom: 14px;
+      line-height: 1.5;
+    }
+
+    .saved-list { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
+
+    .saved-item {
+      background: #f8f7ff;
+      border: 1.5px solid #e0dbff;
+      border-radius: 8px;
+      padding: 10px 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .saved-item-info { flex: 1; min-width: 0; }
+    .saved-item-name { font-size: 0.85rem; font-weight: 600; color: #444; }
+    .saved-item-preview { font-size: 0.72rem; color: #888; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    .saved-item-btns { display: flex; gap: 6px; flex-shrink: 0; }
+
+    .btn-tiny {
+      padding: 5px 10px;
+      border: none;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+    }
+
+    .btn-use { background: #667eea; color: white; }
+    .btn-del { background: #fee2e2; color: #e05; }
+
+    /* トースト */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: #1a1a2e;
+      color: white;
+      padding: 12px 20px;
+      border-radius: 10px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+      transition: transform 0.3s;
+      z-index: 1000;
+      white-space: nowrap;
+    }
+
+    .toast.show { transform: translateX(-50%) translateY(0); }
+
+    /* 空状態 */
+    .empty-state { text-align: center; padding: 30px 16px; color: #aaa; }
+    .empty-state .icon { font-size: 2.5rem; margin-bottom: 8px; }
+    .empty-state p { font-size: 0.85rem; }
+
+    .step-indicator {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .step { display: flex; align-items: center; gap: 4px; }
+
+    .step-num {
+      width: 22px; height: 22px;
+      border-radius: 50%;
+      background: #ddd;
+      color: #888;
+      font-size: 0.7rem;
+      font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    .step-num.active { background: #667eea; color: white; }
+    .step-num.done { background: #10b981; color: white; }
+
+    .step-label { font-size: 0.72rem; color: #aaa; }
+    .step-label.active { color: #667eea; font-weight: 600; }
+
+    .step-sep { color: #ddd; font-size: 0.7rem; }
+
+    @media (max-width: 480px) {
+      .category-grid { grid-template-columns: repeat(2, 1fr); }
+      header h1 { font-size: 1.2rem; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>🤖 AIプロンプトビルダー</h1>
+  <p>テンプレートを選んで穴埋めするだけ</p>
+</header>
+
+<div class="container">
+
+  <!-- タブ -->
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('builder')">📝 ビルダー</button>
+    <button class="tab-btn" onclick="switchTab('custom')">✏️ カスタム</button>
+    <button class="tab-btn" onclick="switchTab('saved')">💾 保存済み</button>
+  </div>
+
+  <!-- ビルダータブ -->
+  <div id="tab-builder" class="tab-panel active">
+
+    <!-- ステップ表示 -->
+    <div class="step-indicator" id="step-indicator">
+      <div class="step">
+        <div class="step-num active" id="sn1">1</div>
+        <div class="step-label active" id="sl1">カテゴリ</div>
+      </div>
+      <div class="step-sep">›</div>
+      <div class="step">
+        <div class="step-num" id="sn2">2</div>
+        <div class="step-label" id="sl2">テンプレ</div>
+      </div>
+      <div class="step-sep">›</div>
+      <div class="step">
+        <div class="step-num" id="sn3">3</div>
+        <div class="step-label" id="sl3">入力</div>
+      </div>
+      <div class="step-sep">›</div>
+      <div class="step">
+        <div class="step-num" id="sn4">4</div>
+        <div class="step-label" id="sl4">完成</div>
+      </div>
+    </div>
+
+    <!-- Step1: カテゴリ -->
+    <div id="step1">
+      <div class="category-grid" id="category-grid"></div>
+    </div>
+
+    <!-- Step2: テンプレート -->
+    <div id="step2" style="display:none">
+      <div class="template-list" id="template-list"></div>
+      <button class="btn btn-secondary" style="width:100%" onclick="goStep(1)">← 戻る</button>
+    </div>
+
+    <!-- Step3: 入力フォーム -->
+    <div id="step3" style="display:none">
+
+      <!-- テンプレートプレビュー（リアルタイム反映） -->
+      <div class="tpl-preview-card">
+        <div class="card-label">
+          <span>📄</span> テンプレートプレビュー
+          <span style="margin-left:auto;font-size:0.68rem;color:#666">入力すると自動で反映されます</span>
+        </div>
+        <div class="tpl-preview-content" id="tpl-live-preview"></div>
+      </div>
+
+      <!-- 穴埋め入力フィールド -->
+      <div class="form-card">
+        <div class="card-header">
+          <h3 id="form-title">✏️ 穴埋め入力</h3>
+          <span class="field-count" id="field-progress"></span>
+        </div>
+        <div id="form-fields"></div>
+      </div>
+
+      <button class="btn btn-primary" onclick="generatePrompt()">✨ プロンプトを生成</button>
+      <br><br>
+      <button class="btn btn-secondary" style="width:100%;margin-top:0" onclick="goStep(2)">← 戻る</button>
+    </div>
+
+    <!-- Step4: 結果 -->
+    <div id="step4" style="display:none">
+      <div class="preview-card">
+        <h3>生成されたプロンプト</h3>
+        <div class="preview-text" id="result-text"></div>
+      </div>
+      <div class="action-row">
+        <button class="btn btn-success" onclick="copyPrompt()">📋 コピー</button>
+        <button class="btn btn-secondary" onclick="goStep(3)">← 編集に戻る</button>
+      </div>
+      <button class="btn btn-secondary" style="width:100%;margin-bottom:8px" onclick="savePrompt()">💾 このプロンプトを保存</button>
+      <button class="btn btn-secondary" style="width:100%" onclick="goStep(1)">🔄 最初からやり直す</button>
+    </div>
+
+  </div>
+
+  <!-- カスタムタブ -->
+  <div id="tab-custom" class="tab-panel">
+    <div class="custom-section">
+      <h3>カスタムテンプレートを作成</h3>
+      <div class="hint-box">
+        穴埋め部分は <strong>{{変数名}}</strong> の形式で書いてください。<br>
+        例: <em>「{{言語}}で{{機能}}を実装するコードを書いて」</em>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">テンプレート名 <span class="field-required">必須</span></label>
+        <input type="text" id="custom-name" placeholder="例: コードレビュー依頼">
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">テンプレート本文 <span class="field-required">必須</span></label>
+        <textarea id="custom-body" rows="6" placeholder="例: {{言語}}で書かれた以下のコードをレビューしてください。&#10;&#10;特に{{観点}}の観点から確認し、改善点があれば具体的に教えてください。&#10;&#10;コード:&#10;{{コード}}"></textarea>
+      </div>
+
+      <button class="btn btn-primary" onclick="saveCustomTemplate()">💾 テンプレートを保存</button>
+
+      <div id="custom-preview-wrap" style="margin-top:14px; display:none">
+        <div class="preview-card">
+          <h3>プレビュー</h3>
+          <div class="preview-text" id="custom-preview-text"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 保存済みカスタムテンプレート一覧 -->
+    <div class="custom-section" style="margin-top:14px">
+      <h3>保存済みカスタムテンプレート</h3>
+      <div id="custom-template-list">
+        <div class="empty-state">
+          <div class="icon">📋</div>
+          <p>まだカスタムテンプレートはありません</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 保存済みタブ -->
+  <div id="tab-saved" class="tab-panel">
+    <div class="custom-section">
+      <h3>保存済みプロンプト</h3>
+      <p>生成したプロンプトをここに保存して再利用できます。</p>
+      <div id="saved-list-container">
+        <div class="empty-state">
+          <div class="icon">📂</div>
+          <p>まだ保存されたプロンプトはありません</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ============================================================
+// データ定義
+// ============================================================
+const CATEGORIES = [
+  { id: 'writing', icon: '✍️', name: '文章作成', desc: 'ブログ・メール・記事' },
+  { id: 'code',    icon: '💻', name: 'コード',   desc: '実装・デバッグ・レビュー' },
+  { id: 'summary', icon: '📝', name: '要約・分析', desc: '要約・リスト化・比較' },
+  { id: 'idea',    icon: '💡', name: 'アイデア',  desc: 'ブレスト・企画・提案' },
+  { id: 'trans',   icon: '🌏', name: '翻訳・言い換え', desc: '翻訳・リライト' },
+  { id: 'qa',      icon: '🎓', name: '学習・QA', desc: '説明・質問・教育' },
+  { id: 'business',icon: '💼', name: 'ビジネス', desc: '企画書・提案・報告' },
+  { id: 'custom',  icon: '⚙️', name: 'カスタム', desc: '自作テンプレート' },
+];
+
+const TEMPLATES = {
+  writing: [
+    {
+      id: 'blog',
+      name: 'ブログ記事を書く',
+      preview: 'テーマ・ターゲット・文体を指定して記事を生成',
+      fields: [
+        { key: 'theme',    label: 'テーマ・タイトル',   type: 'text',     placeholder: '例: 初心者向けPythonの始め方' },
+        { key: 'target',   label: 'ターゲット読者',      type: 'text',     placeholder: '例: プログラミング未経験の20代社会人' },
+        { key: 'length',   label: '文字数の目安',        type: 'select',   options: ['800文字程度', '1500文字程度', '3000文字程度', '5000文字程度'] },
+        { key: 'tone',     label: '文体・トーン',        type: 'select',   options: ['です・ます調（丁寧）', 'だ・である調（硬め）', 'カジュアル・フレンドリー', '専門的・フォーマル'] },
+        { key: 'points',   label: '含めたいポイント（任意）', type: 'textarea', placeholder: '例: SEOを意識する、具体例を多く入れる', required: false },
+      ],
+      template: `以下の条件でブログ記事を書いてください。
+
+【テーマ】{{theme}}
+【ターゲット読者】{{target}}
+【文字数】{{length}}
+【文体】{{tone}}
+{{points_block}}
+
+構成は「導入→本文（見出し付き）→まとめ」の形式でお願いします。読者が最後まで読みたくなるような、具体的でわかりやすい内容にしてください。`,
+    },
+    {
+      id: 'email',
+      name: 'ビジネスメールを書く',
+      preview: '目的・相手・状況を指定してメールを生成',
+      fields: [
+        { key: 'purpose',  label: 'メールの目的',   type: 'text',     placeholder: '例: 打ち合わせの日程調整をお願いする' },
+        { key: 'recipient',label: '宛先・相手',     type: 'text',     placeholder: '例: 取引先の田中部長' },
+        { key: 'situation',label: '背景・状況',     type: 'textarea', placeholder: '例: 先週の会議で概要を話し合い、詳細を詰めたい' },
+        { key: 'tone',     label: '丁寧さのレベル', type: 'select',   options: ['かなり丁寧（初めての相手）', '普通（通常の取引先）', 'ややカジュアル（親しい関係）'] },
+      ],
+      template: `以下の条件でビジネスメールを作成してください。
+
+【目的】{{purpose}}
+【宛先】{{recipient}}
+【背景・状況】{{situation}}
+【トーン】{{tone}}
+
+件名と本文を含め、実際に送れる形式で書いてください。`,
+    },
+    {
+      id: 'sns',
+      name: 'SNS投稿文を書く',
+      preview: 'SNS・内容・ゴールを指定して投稿文を生成',
+      fields: [
+        { key: 'platform', label: 'SNSの種類',     type: 'select',   options: ['X（Twitter）', 'Instagram', 'Facebook', 'LinkedIn', 'note'] },
+        { key: 'content',  label: '伝えたい内容',  type: 'textarea', placeholder: '例: 新しいサービスをリリースしました。〇〇の悩みを解決します' },
+        { key: 'goal',     label: '目的・ゴール',  type: 'select',   options: ['フォロワー獲得・認知拡大', '商品・サービスの宣伝', 'エンゲージメント（いいね・コメント）増加', '情報発信・教育'] },
+        { key: 'hashtag',  label: 'ハッシュタグ（任意）', type: 'text', placeholder: '例: #マーケティング #スタートアップ', required: false },
+      ],
+      template: `以下の条件で{{platform}}の投稿文を作成してください。
+
+【伝えたい内容】{{content}}
+【目的】{{goal}}
+{{hashtag_block}}
+
+{{platform}}のアルゴリズムとユーザー行動に合わせた、思わず読みたくなる投稿文を3パターン作成してください。`,
+    },
+  ],
+
+  code: [
+    {
+      id: 'implement',
+      name: 'コードを実装する',
+      preview: '言語・機能・条件を指定してコード生成',
+      fields: [
+        { key: 'lang',        label: 'プログラミング言語',  type: 'text',     placeholder: '例: Python、TypeScript、Go' },
+        { key: 'feature',     label: '実装したい機能',      type: 'textarea', placeholder: '例: CSVファイルを読み込んで重複行を除去し、結果をJSONで出力する' },
+        { key: 'constraints', label: '制約・条件（任意）',  type: 'textarea', placeholder: '例: 外部ライブラリは使わない、エラーハンドリングを入れる', required: false },
+        { key: 'style',       label: 'コードスタイル',      type: 'select',   options: ['コメントを詳しく書く', 'コメントは最小限', '関数型スタイル', 'OOP（クラスベース）'] },
+      ],
+      template: `以下の仕様で{{lang}}のコードを実装してください。
+
+【機能】{{feature}}
+{{constraints_block}}
+【スタイル】{{style}}
+
+実装後に、コードの動作説明と使用例も添えてください。`,
+    },
+    {
+      id: 'debug',
+      name: 'バグを修正する',
+      preview: 'エラー内容・コードを渡してデバッグ依頼',
+      fields: [
+        { key: 'lang',     label: '言語',             type: 'text',     placeholder: '例: JavaScript' },
+        { key: 'error',    label: 'エラーメッセージ', type: 'textarea', placeholder: 'エラー文をここに貼り付け' },
+        { key: 'code',     label: '問題のコード',      type: 'textarea', placeholder: 'コードをここに貼り付け' },
+        { key: 'expected', label: '期待する動作',      type: 'textarea', placeholder: '例: ボタンを押すとモーダルが表示される' },
+      ],
+      template: `以下の{{lang}}のコードにあるバグを修正してください。
+
+【エラーメッセージ】
+{{error}}
+
+【問題のコード】
+\`\`\`{{lang}}
+{{code}}
+\`\`\`
+
+【期待する動作】
+{{expected}}
+
+バグの原因と修正方法を説明した上で、修正済みのコードを提示してください。`,
+    },
+    {
+      id: 'review',
+      name: 'コードレビューを依頼する',
+      preview: 'コードを渡してレビュー観点を指定',
+      fields: [
+        { key: 'lang',     label: '言語',          type: 'text',     placeholder: '例: TypeScript' },
+        { key: 'code',     label: 'レビューするコード', type: 'textarea', placeholder: 'コードをここに貼り付け' },
+        { key: 'focus',    label: '重視する観点',   type: 'select',   options: ['全体的なコード品質', 'パフォーマンス・最適化', 'セキュリティ', '可読性・保守性', 'バグ・エラー処理'] },
+        { key: 'level',    label: 'フィードバックの詳しさ', type: 'select', options: ['簡潔に要点のみ', '標準的な詳しさ', '詳細に（理由・改善例も）'] },
+      ],
+      template: `以下の{{lang}}コードをレビューしてください。
+
+【重視する観点】{{focus}}
+【フィードバックの詳しさ】{{level}}
+
+\`\`\`{{lang}}
+{{code}}
+\`\`\`
+
+問題点と改善提案を具体的に教えてください。良い点もあれば挙げてください。`,
+    },
+  ],
+
+  summary: [
+    {
+      id: 'summarize',
+      name: 'テキストを要約する',
+      preview: '文章・長さ・形式を指定して要約生成',
+      fields: [
+        { key: 'text',   label: '要約するテキスト', type: 'textarea', placeholder: '要約したい文章をここに貼り付け' },
+        { key: 'length', label: '要約の長さ',        type: 'select',   options: ['3行以内', '100文字以内', '200〜300文字', '箇条書き5項目以内'] },
+        { key: 'focus',  label: '重点を置く内容（任意）', type: 'text', placeholder: '例: 数字・データの部分、結論と提案', required: false },
+      ],
+      template: `以下のテキストを要約してください。
+
+【要約の長さ】{{length}}
+{{focus_block}}
+
+---
+{{text}}
+---
+
+核心的な内容が伝わる要約をお願いします。`,
+    },
+    {
+      id: 'compare',
+      name: '2つのものを比較する',
+      preview: '比較対象・観点を指定して比較表を生成',
+      fields: [
+        { key: 'item1',   label: '比較対象A',   type: 'text',     placeholder: '例: React' },
+        { key: 'item2',   label: '比較対象B',   type: 'text',     placeholder: '例: Vue.js' },
+        { key: 'context', label: '利用シーン・前提', type: 'text', placeholder: '例: 小規模なWebアプリ開発' },
+        { key: 'aspects', label: '比較する観点（任意）', type: 'text', placeholder: '例: 学習コスト、パフォーマンス、エコシステム', required: false },
+      ],
+      template: `「{{item1}}」と「{{item2}}」を比較してください。
+
+【利用シーン・前提】{{context}}
+{{aspects_block}}
+
+比較表（マークダウン形式）と、それぞれが向いているケースのまとめを教えてください。`,
+    },
+  ],
+
+  idea: [
+    {
+      id: 'brainstorm',
+      name: 'アイデアをブレスト',
+      preview: 'テーマ・条件を指定してアイデアを大量生成',
+      fields: [
+        { key: 'theme',       label: 'ブレストのテーマ',  type: 'text',     placeholder: '例: 個人開発で作れるWebサービス' },
+        { key: 'constraints', label: '条件・制約',        type: 'text',     placeholder: '例: 1人で開発可能、技術はNext.js' },
+        { key: 'count',       label: 'アイデアの数',      type: 'select',   options: ['5個', '10個', '20個', '30個'] },
+        { key: 'style',       label: 'アイデアのスタイル',type: 'select',   options: ['実現可能な現実的なもの', '斬新・ユニークなもの', '現実的なものと斬新なものを混ぜて'] },
+      ],
+      template: `以下のテーマでブレインストーミングをしてください。
+
+【テーマ】{{theme}}
+【条件・制約】{{constraints}}
+【アイデア数】{{count}}
+【スタイル】{{style}}
+
+各アイデアについて、タイトルと一行説明を付けてリストアップしてください。`,
+    },
+    {
+      id: 'naming',
+      name: 'ネーミングを考える',
+      preview: '商品・サービス・条件を指定してネーミング案を生成',
+      fields: [
+        { key: 'target',    label: '何のネーミングか',    type: 'text',     placeholder: '例: 新しいサブスクリプションサービス' },
+        { key: 'concept',   label: 'コンセプト・特徴',    type: 'textarea', placeholder: '例: 毎日のタスク管理を楽しくするAIアシスタント' },
+        { key: 'style',     label: '好みのスタイル',      type: 'select',   options: ['短くてキャッチー', '意味のある和製英語', '英単語・造語', '日本語', '何でもOK'] },
+        { key: 'count',     label: '候補の数',            type: 'select',   options: ['5個', '10個', '15個'] },
+      ],
+      template: `以下の条件でネーミング案を考えてください。
+
+【対象】{{target}}
+【コンセプト・特徴】{{concept}}
+【スタイル】{{style}}
+【候補数】{{count}}
+
+各案にネーミングの由来・意味も添えてください。`,
+    },
+  ],
+
+  trans: [
+    {
+      id: 'translate',
+      name: 'テキストを翻訳する',
+      preview: '翻訳元・言語・スタイルを指定して翻訳',
+      fields: [
+        { key: 'from',  label: '翻訳元の言語',  type: 'text',     placeholder: '例: 英語（自動判定でもOK）' },
+        { key: 'to',    label: '翻訳先の言語',  type: 'text',     placeholder: '例: 日本語' },
+        { key: 'style', label: '翻訳スタイル',  type: 'select',   options: ['自然な表現（意訳OK）', '原文に忠実（直訳寄り）', 'ビジネス文書向け', 'カジュアル・日常会話向け'] },
+        { key: 'text',  label: '翻訳するテキスト', type: 'textarea', placeholder: 'テキストをここに貼り付け' },
+      ],
+      template: `以下のテキストを{{from}}から{{to}}に翻訳してください。
+
+【スタイル】{{style}}
+
+---
+{{text}}
+---
+
+翻訳後のテキストのみを出力してください。`,
+    },
+    {
+      id: 'rewrite',
+      name: '文章を言い換える',
+      preview: 'トーン・目的を変えて文章をリライト',
+      fields: [
+        { key: 'text',    label: '元の文章',          type: 'textarea', placeholder: '言い換えたい文章をここに貼り付け' },
+        { key: 'purpose', label: 'リライトの目的',     type: 'select',   options: ['より丁寧・フォーマルに', 'よりカジュアル・親しみやすく', 'より簡潔・シンプルに', 'より具体的・詳しく', 'SEO向けに最適化'] },
+        { key: 'count',   label: 'バリエーション数',   type: 'select',   options: ['1パターン', '2パターン', '3パターン'] },
+      ],
+      template: `以下の文章をリライトしてください。
+
+【目的】{{purpose}}
+【バリエーション数】{{count}}
+
+---
+{{text}}
+---
+
+{{count}}のリライト案を提示してください。`,
+    },
+  ],
+
+  qa: [
+    {
+      id: 'explain',
+      name: '概念・技術を説明してもらう',
+      preview: 'トピック・レベルを指定してわかりやすく解説',
+      fields: [
+        { key: 'topic',   label: '説明してほしいトピック', type: 'text',     placeholder: '例: Dockerコンテナの仕組み' },
+        { key: 'level',   label: '自分の知識レベル',       type: 'select',   options: ['完全に初心者', '基礎は知っている', '中級者', '上級者（深掘りしたい）'] },
+        { key: 'format',  label: '説明の形式',             type: 'select',   options: ['例え話を使ってわかりやすく', '箇条書きで整理して', '図や構造を文字で表現して', 'ステップバイステップで'] },
+        { key: 'focus',   label: '特に知りたい点（任意）', type: 'text',     placeholder: '例: なぜ必要なのか、実務でどう使うか', required: false },
+      ],
+      template: `「{{topic}}」について説明してください。
+
+【私の知識レベル】{{level}}
+【説明の形式】{{format}}
+{{focus_block}}
+
+理解しやすいよう、具体例も交えて教えてください。`,
+    },
+    {
+      id: 'quiz',
+      name: '理解度チェック問題を作る',
+      preview: 'テーマ・難易度を指定して問題を生成',
+      fields: [
+        { key: 'theme',  label: '問題のテーマ',   type: 'text',     placeholder: '例: SQL基礎、英文法、Pythonの関数' },
+        { key: 'level',  label: '難易度',         type: 'select',   options: ['初級', '中級', '上級', '初級〜上級ミックス'] },
+        { key: 'count',  label: '問題数',         type: 'select',   options: ['3問', '5問', '10問'] },
+        { key: 'format', label: '形式',           type: 'select',   options: ['4択問題', '記述問題', '〇×問題', 'ミックス'] },
+      ],
+      template: `「{{theme}}」に関する{{format}}を{{count}}作成してください。
+
+【難易度】{{level}}
+
+各問題に解答と解説もつけてください。`,
+    },
+  ],
+
+  business: [
+    {
+      id: 'proposal',
+      name: '企画書・提案書を作る',
+      preview: '企画の概要・目的・条件を指定して提案書を生成',
+      fields: [
+        { key: 'title',    label: '企画名・タイトル',  type: 'text',     placeholder: '例: 社内副業制度の導入提案' },
+        { key: 'purpose',  label: '目的・背景',        type: 'textarea', placeholder: '例: 人材流出を防ぎ、社員のスキルアップを促進するため' },
+        { key: 'target',   label: '対象・スコープ',    type: 'text',     placeholder: '例: 全社員（正社員のみ）' },
+        { key: 'audience', label: '提案先・読者',      type: 'text',     placeholder: '例: 経営陣、人事部長' },
+        { key: 'extras',   label: '含めたい内容（任意）', type: 'textarea', placeholder: '例: 期待効果、コスト試算、スケジュール案', required: false },
+      ],
+      template: `以下の条件で企画書・提案書の構成と内容を作成してください。
+
+【企画名】{{title}}
+【目的・背景】{{purpose}}
+【対象・スコープ】{{target}}
+【提案先】{{audience}}
+{{extras_block}}
+
+「課題→提案内容→期待効果→実施計画→まとめ」の構成で、説得力のある提案書を作成してください。`,
+    },
+    {
+      id: 'meeting',
+      name: '会議のアジェンダを作る',
+      preview: '会議の目的・参加者・時間を指定してアジェンダ生成',
+      fields: [
+        { key: 'purpose',   label: '会議の目的',      type: 'text',     placeholder: '例: 新機能のリリース日程と担当の確認' },
+        { key: 'attendees', label: '参加者',          type: 'text',     placeholder: '例: プロダクトマネージャー、エンジニア3名、デザイナー' },
+        { key: 'duration',  label: '会議時間',        type: 'select',   options: ['30分', '45分', '60分', '90分', '120分'] },
+        { key: 'topics',    label: '話し合いたいこと', type: 'textarea', placeholder: '例: 現状の進捗確認、ブロッカーの共有、次のアクション決定' },
+      ],
+      template: `以下の条件で会議のアジェンダを作成してください。
+
+【目的】{{purpose}}
+【参加者】{{attendees}}
+【会議時間】{{duration}}
+【話し合いたいこと】{{topics}}
+
+時間配分を含むアジェンダと、事前に準備しておくべき資料・情報のリストも作成してください。`,
+    },
+  ],
+
+  custom: [], // 動的に追加
+};
+
+// ============================================================
+// 状態管理
+// ============================================================
+let state = {
+  step: 1,
+  category: null,
+  template: null,
+  fieldValues: {},
+  generatedPrompt: '',
+};
+
+// ============================================================
+// 初期化
+// ============================================================
+function init() {
+  renderCategories();
+  loadSavedList();
+  loadCustomTemplates();
+
+  // カスタムテンプレート リアルタイムプレビュー
+  document.getElementById('custom-body').addEventListener('input', updateCustomPreview);
+}
+
+// ============================================================
+// カテゴリ描画
+// ============================================================
+function renderCategories() {
+  const grid = document.getElementById('category-grid');
+  grid.innerHTML = CATEGORIES.map(c => `
+    <div class="category-card" onclick="selectCategory('${c.id}')">
+      <div class="category-icon">${c.icon}</div>
+      <div class="category-name">${c.name}</div>
+      <div class="category-desc">${c.desc}</div>
+    </div>
+  `).join('');
+}
+
+function selectCategory(id) {
+  state.category = id;
+  document.querySelectorAll('.category-card').forEach(el => el.classList.remove('selected'));
+  event.currentTarget.classList.add('selected');
+
+  if (id === 'custom') {
+    const customs = loadCustomTemplates();
+    if (customs.length === 0) {
+      showToast('まず「カスタム」タブでテンプレートを作成してください');
+      switchTab('custom');
+      return;
+    }
+    TEMPLATES.custom = customs;
+  }
+
+  setTimeout(() => goStep(2), 200);
+}
+
+// ============================================================
+// テンプレート描画
+// ============================================================
+function renderTemplates(categoryId) {
+  const list = document.getElementById('template-list');
+  const templates = TEMPLATES[categoryId] || [];
+
+  if (templates.length === 0) {
+    list.innerHTML = '<div class="empty-state"><div class="icon">📋</div><p>テンプレートがありません</p></div>';
+    return;
+  }
+
+  list.innerHTML = templates.map(t => `
+    <div class="template-item" onclick="selectTemplate('${t.id}', '${categoryId}')">
+      <div class="template-name">${t.name}</div>
+      <div class="template-preview">${t.preview || ''}</div>
+    </div>
+  `).join('');
+}
+
+function selectTemplate(id, categoryId) {
+  const template = (TEMPLATES[categoryId] || []).find(t => t.id === id);
+  if (!template) return;
+
+  state.template = template;
+  document.querySelectorAll('.template-item').forEach(el => el.classList.remove('selected'));
+  event.currentTarget.classList.add('selected');
+
+  setTimeout(() => goStep(3), 200);
+}
+
+// ============================================================
+// フォーム描画
+// ============================================================
+function renderForm(template) {
+  document.getElementById('form-title').textContent = template.name;
+  const container = document.getElementById('form-fields');
+
+  container.innerHTML = template.fields.map((f, idx) => {
+    const required = f.required !== false;
+    const reqBadge = required
+      ? '<span class="field-required">必須</span>'
+      : '<span style="color:#bbb;font-size:0.68rem">任意</span>';
+
+    let input = '';
+    if (f.type === 'text') {
+      input = `<input type="text" id="field-${f.key}" placeholder="${f.placeholder || ''}" autocomplete="off" oninput="updateLivePreview()">`;
+    } else if (f.type === 'textarea') {
+      input = `<textarea id="field-${f.key}" placeholder="${f.placeholder || ''}" rows="3" oninput="updateLivePreview()"></textarea>`;
+    } else if (f.type === 'select') {
+      const opts = f.options.map(o => `<option value="${o}">${o}</option>`).join('');
+      input = `<select id="field-${f.key}" onchange="updateLivePreview()">${opts}</select>`;
+    }
+
+    return `
+      <div class="field-group">
+        <label class="field-label">
+          <span class="field-num">${idx + 1}</span>
+          ${f.label}${reqBadge}
+        </label>
+        ${input}
+      </div>
+    `;
+  }).join('');
+
+  // 初期プレビューを描画
+  updateLivePreview();
+}
+
+// ============================================================
+// ライブプレビュー更新
+// ============================================================
+function updateLivePreview() {
+  const template = state.template;
+  if (!template) return;
+
+  const preview = document.getElementById('tpl-live-preview');
+  const progress = document.getElementById('field-progress');
+  if (!preview) return;
+
+  // 各フィールドの現在値を取得
+  const values = {};
+  template.fields.forEach(f => {
+    const el = document.getElementById(`field-${f.key}`);
+    values[f.key] = el ? el.value.trim() : '';
+  });
+
+  // 入力済みカウント
+  const required = template.fields.filter(f => f.required !== false);
+  const filled = required.filter(f => values[f.key]);
+  if (progress) {
+    progress.textContent = `${filled.length} / ${required.length} 入力済み`;
+    progress.style.color = filled.length === required.length ? '#10b981' : '#f6a623';
+  }
+
+  // テンプレート文字列を分解してHTML化
+  // まず _block 変数のみ処理したベース文字列を作る
+  let raw = template.template;
+  template.fields.forEach(f => {
+    const blockKey = `{{${f.key}_block}}`;
+    if (raw.includes(blockKey)) {
+      const val = values[f.key];
+      const label = f.label.replace('（任意）', '').trim();
+      raw = raw.replace(blockKey, val ? `【${label}】${val}\n` : '');
+    }
+  });
+
+  // 通常変数を span に置換（HTMLエスケープしてから）
+  const escaped = escHtml(raw);
+
+  // エスケープ済み文字列内の {{key}} を span タグに置換
+  const html = escaped.replace(/\{\{([^}]+)\}\}/g, (match, key) => {
+    const val = values[key];
+    if (val) {
+      return `<span class="blank-filled">${escHtml(val)}</span>`;
+    } else {
+      // フィールドのラベルを取得
+      const field = template.fields.find(f => f.key === key);
+      const label = field ? field.label.replace('（任意）','').trim() : key;
+      return `<span class="blank-empty">　${label}　</span>`;
+    }
+  });
+
+  preview.innerHTML = html;
+}
+
+// ============================================================
+// テンプレートを値で埋めてテキストを生成（共通処理）
+// ============================================================
+function buildPromptText(template, values) {
+  let prompt = template.template;
+
+  // _block 変数（任意フィールド）を処理
+  template.fields.forEach(f => {
+    const blockKey = `{{${f.key}_block}}`;
+    if (prompt.includes(blockKey)) {
+      const val = values[f.key] || '';
+      const label = f.label.replace('（任意）', '').trim();
+      prompt = prompt.replace(blockKey, val ? `【${label}】${val}\n` : '');
+    }
+  });
+
+  // 通常変数を置換
+  template.fields.forEach(f => {
+    const val = values[f.key] || '';
+    prompt = prompt.replace(new RegExp(`\\{\\{${f.key}\\}\\}`, 'g'), val);
+  });
+
+  // 残った未置換変数をクリア
+  prompt = prompt.replace(/\{\{[^}]+_block\}\}/g, '');
+
+  return prompt;
+}
+
+// ============================================================
+// プロンプト生成
+// ============================================================
+function generatePrompt() {
+  const template = state.template;
+  const values = {};
+  let firstErrorEl = null;
+
+  template.fields.forEach(f => {
+    const el = document.getElementById(`field-${f.key}`);
+    const val = el ? el.value.trim() : '';
+    const required = f.required !== false;
+
+    if (required && !val) {
+      if (el) {
+        el.style.borderColor = '#e05';
+        el.style.background = '#fff5f5';
+        if (!firstErrorEl) firstErrorEl = el;
+      }
+    } else {
+      if (el) {
+        el.style.borderColor = '';
+        el.style.background = '';
+      }
+      values[f.key] = val;
+    }
+  });
+
+  if (firstErrorEl) {
+    showToast('必須項目を入力してください');
+    firstErrorEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    firstErrorEl.focus();
+    return;
+  }
+
+  state.fieldValues = values;
+  state.generatedPrompt = buildPromptText(template, values);
+  document.getElementById('result-text').textContent = state.generatedPrompt;
+  goStep(4);
+}
+
+// ============================================================
+// ステップ制御
+// ============================================================
+function goStep(n) {
+  state.step = n;
+
+  // 各ステップのDOM
+  [1, 2, 3, 4].forEach(i => {
+    document.getElementById(`step${i}`).style.display = i === n ? '' : 'none';
+  });
+
+  // ステップ2: テンプレートを描画
+  if (n === 2) renderTemplates(state.category);
+
+  // ステップ3: フォームを描画
+  if (n === 3) renderForm(state.template);
+
+  // ステップインジケーター更新
+  [1, 2, 3, 4].forEach(i => {
+    const num = document.getElementById(`sn${i}`);
+    const label = document.getElementById(`sl${i}`);
+    if (i < n) {
+      num.className = 'step-num done';
+      num.textContent = '✓';
+    } else if (i === n) {
+      num.className = 'step-num active';
+      num.textContent = i;
+    } else {
+      num.className = 'step-num';
+      num.textContent = i;
+    }
+    label.className = 'step-label' + (i === n ? ' active' : '');
+  });
+
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ============================================================
+// コピー
+// ============================================================
+function copyPrompt() {
+  const text = state.generatedPrompt;
+  if (!text) return;
+
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(() => showToast('📋 コピーしました！'));
+  } else {
+    // フォールバック
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    showToast('📋 コピーしました！');
+  }
+}
+
+// ============================================================
+// 保存
+// ============================================================
+function savePrompt() {
+  const text = state.generatedPrompt;
+  if (!text) return;
+
+  const saved = JSON.parse(localStorage.getItem('saved_prompts') || '[]');
+  const name = state.template ? state.template.name : 'プロンプト';
+  const entry = {
+    id: Date.now(),
+    name: name,
+    text: text,
+    date: new Date().toLocaleDateString('ja-JP'),
+  };
+  saved.unshift(entry);
+  if (saved.length > 50) saved.pop(); // 最大50件
+  localStorage.setItem('saved_prompts', JSON.stringify(saved));
+  showToast('💾 保存しました！');
+  loadSavedList();
+}
+
+function loadSavedList() {
+  const saved = JSON.parse(localStorage.getItem('saved_prompts') || '[]');
+  const container = document.getElementById('saved-list-container');
+
+  if (saved.length === 0) {
+    container.innerHTML = '<div class="empty-state"><div class="icon">📂</div><p>まだ保存されたプロンプトはありません</p></div>';
+    return;
+  }
+
+  container.innerHTML = `<div class="saved-list">${saved.map(s => `
+    <div class="saved-item">
+      <div class="saved-item-info">
+        <div class="saved-item-name">${escHtml(s.name)} <span style="color:#aaa;font-weight:400;font-size:0.7rem">${s.date}</span></div>
+        <div class="saved-item-preview">${escHtml(s.text.substring(0, 60))}...</div>
+      </div>
+      <div class="saved-item-btns">
+        <button class="btn-tiny btn-use" onclick="useSaved(${s.id})">使う</button>
+        <button class="btn-tiny btn-del" onclick="deleteSaved(${s.id})">削除</button>
+      </div>
+    </div>
+  `).join('')}</div>`;
+}
+
+function useSaved(id) {
+  const saved = JSON.parse(localStorage.getItem('saved_prompts') || '[]');
+  const entry = saved.find(s => s.id === id);
+  if (!entry) return;
+
+  state.generatedPrompt = entry.text;
+  document.getElementById('result-text').textContent = entry.text;
+  switchTab('builder');
+  goStep(4);
+}
+
+function deleteSaved(id) {
+  const saved = JSON.parse(localStorage.getItem('saved_prompts') || '[]');
+  const updated = saved.filter(s => s.id !== id);
+  localStorage.setItem('saved_prompts', JSON.stringify(updated));
+  loadSavedList();
+  showToast('削除しました');
+}
+
+// ============================================================
+// カスタムテンプレート
+// ============================================================
+function saveCustomTemplate() {
+  const name = document.getElementById('custom-name').value.trim();
+  const body = document.getElementById('custom-body').value.trim();
+
+  if (!name || !body) {
+    showToast('名前と本文を入力してください');
+    return;
+  }
+
+  // フィールド抽出
+  const matches = [...body.matchAll(/\{\{([^}]+)\}\}/g)];
+  const keys = [...new Set(matches.map(m => m[1]))];
+  const fields = keys.map(k => ({
+    key: k,
+    label: k,
+    type: k.length > 15 ? 'textarea' : 'text',
+    placeholder: `${k}を入力`,
+  }));
+
+  const template = {
+    id: 'custom_' + Date.now(),
+    name: name,
+    preview: body.substring(0, 50) + '...',
+    fields: fields,
+    template: body,
+  };
+
+  const customs = JSON.parse(localStorage.getItem('custom_templates') || '[]');
+  customs.unshift(template);
+  localStorage.setItem('custom_templates', JSON.stringify(customs));
+
+  document.getElementById('custom-name').value = '';
+  document.getElementById('custom-body').value = '';
+  document.getElementById('custom-preview-wrap').style.display = 'none';
+
+  showToast('✅ テンプレートを保存しました！');
+  loadCustomTemplates();
+}
+
+function loadCustomTemplates() {
+  const customs = JSON.parse(localStorage.getItem('custom_templates') || '[]');
+  TEMPLATES.custom = customs;
+
+  const container = document.getElementById('custom-template-list');
+  if (!container) return customs;
+
+  if (customs.length === 0) {
+    container.innerHTML = '<div class="empty-state"><div class="icon">📋</div><p>まだカスタムテンプレートはありません</p></div>';
+    return customs;
+  }
+
+  container.innerHTML = `<div class="saved-list">${customs.map(t => `
+    <div class="saved-item">
+      <div class="saved-item-info">
+        <div class="saved-item-name">${escHtml(t.name)}</div>
+        <div class="saved-item-preview">${escHtml(t.template.substring(0, 50))}...</div>
+      </div>
+      <div class="saved-item-btns">
+        <button class="btn-tiny btn-del" onclick="deleteCustomTemplate('${t.id}')">削除</button>
+      </div>
+    </div>
+  `).join('')}</div>`;
+
+  return customs;
+}
+
+function deleteCustomTemplate(id) {
+  const customs = JSON.parse(localStorage.getItem('custom_templates') || '[]');
+  const updated = customs.filter(t => t.id !== id);
+  localStorage.setItem('custom_templates', JSON.stringify(updated));
+  loadCustomTemplates();
+  showToast('削除しました');
+}
+
+function updateCustomPreview() {
+  const body = document.getElementById('custom-body').value;
+  const wrap = document.getElementById('custom-preview-wrap');
+  const preview = document.getElementById('custom-preview-text');
+
+  if (body.trim()) {
+    wrap.style.display = '';
+    // {{変数}} をハイライト表示
+    const html = escHtml(body).replace(/\{\{([^}]+)\}\}/g, '<span class="highlight">{{$1}}</span>');
+    preview.innerHTML = html;
+  } else {
+    wrap.style.display = 'none';
+  }
+}
+
+// ============================================================
+// タブ切り替え
+// ============================================================
+function switchTab(id) {
+  document.querySelectorAll('.tab-btn').forEach((btn, i) => {
+    const ids = ['builder', 'custom', 'saved'];
+    btn.classList.toggle('active', ids[i] === id);
+  });
+  document.querySelectorAll('.tab-panel').forEach(panel => panel.classList.remove('active'));
+  document.getElementById(`tab-${id}`).classList.add('active');
+
+  if (id === 'saved') loadSavedList();
+  if (id === 'custom') loadCustomTemplates();
+}
+
+// ============================================================
+// ユーティリティ
+// ============================================================
+function showToast(msg) {
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 2500);
+}
+
+function escHtml(str) {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+// ============================================================
+// 起動
+// ============================================================
+init();
+</script>
+</body>
+</html>
