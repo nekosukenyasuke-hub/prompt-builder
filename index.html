@@ -1,1748 +1,1124 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AIプロンプトビルダー</title>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Yu Gothic UI', sans-serif;
-      background: #f0f2f5;
-      color: #1a1a2e;
-      min-height: 100vh;
-    }
-
-    header {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
-      padding: 16px 20px;
-      text-align: center;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-    }
-
-    header h1 { font-size: 1.4rem; font-weight: 700; }
-    header p { font-size: 0.8rem; opacity: 0.85; margin-top: 4px; }
-
-    .container { max-width: 720px; margin: 0 auto; padding: 16px; }
-
-    /* タブ */
-    .tabs {
-      display: flex;
-      background: white;
-      border-radius: 12px;
-      padding: 4px;
-      margin-bottom: 16px;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.1);
-      gap: 4px;
-    }
-
-    .tab-btn {
-      flex: 1;
-      padding: 8px 4px;
-      border: none;
-      background: transparent;
-      border-radius: 8px;
-      font-size: 0.8rem;
-      font-weight: 600;
-      color: #888;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-
-    .tab-btn.active {
-      background: linear-gradient(135deg, #667eea, #764ba2);
-      color: white;
-    }
-
-    .tab-panel { display: none; }
-    .tab-panel.active { display: block; }
-
-    /* カテゴリ選択 */
-    .category-grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 10px;
-      margin-bottom: 16px;
-    }
-
-    .category-card {
-      background: white;
-      border-radius: 12px;
-      padding: 14px 12px;
-      cursor: pointer;
-      border: 2px solid transparent;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
-      transition: all 0.2s;
-      text-align: center;
-    }
-
-    .category-card:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.12); }
-    .category-card.selected { border-color: #667eea; background: #f0eeff; }
-
-    .category-icon { font-size: 1.8rem; margin-bottom: 6px; }
-    .category-name { font-size: 0.85rem; font-weight: 600; color: #333; }
-    .category-desc { font-size: 0.7rem; color: #888; margin-top: 2px; }
-
-    /* テンプレート選択 */
-    .template-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
-
-    .template-item {
-      background: white;
-      border-radius: 10px;
-      padding: 12px 14px;
-      cursor: pointer;
-      border: 2px solid transparent;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
-      transition: all 0.2s;
-    }
-
-    .template-item:hover { border-color: #aaa; }
-    .template-item.selected { border-color: #667eea; background: #f8f7ff; }
-
-    .template-name { font-size: 0.9rem; font-weight: 700; color: #333; }
-    .template-preview { font-size: 0.75rem; color: #888; margin-top: 4px; line-height: 1.4; }
-
-    /* テンプレートプレビュー（入力と連動） */
-    .tpl-preview-card {
-      background: #1a1a2e;
-      border-radius: 12px;
-      padding: 16px;
-      margin-bottom: 14px;
-      position: relative;
-    }
-
-    .tpl-preview-card .card-label {
-      color: #888;
-      font-size: 0.72rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.6px;
-      margin-bottom: 10px;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .tpl-preview-content {
-      color: #c8c8d8;
-      font-size: 0.86rem;
-      line-height: 1.8;
-      white-space: pre-wrap;
-      word-break: break-word;
-    }
-
-    /* 未入力の穴埋め箇所 */
-    .blank-empty {
-      display: inline-block;
-      background: rgba(246,201,14,0.15);
-      border: 1.5px dashed #f6c90e;
-      border-radius: 4px;
-      color: #f6c90e;
-      font-weight: 700;
-      padding: 0 4px;
-      font-size: 0.82rem;
-    }
-
-    /* 入力済みの穴埋め箇所 */
-    .blank-filled {
-      display: inline-block;
-      background: rgba(102,210,150,0.15);
-      border-radius: 4px;
-      color: #6dd49e;
-      font-weight: 700;
-      padding: 0 4px;
-      font-size: 0.86rem;
-    }
-
-    /* フォーム */
-    .form-card {
-      background: white;
-      border-radius: 12px;
-      padding: 16px;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
-      margin-bottom: 16px;
-    }
-
-    .form-card .card-header {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 16px;
-      padding-bottom: 12px;
-      border-bottom: 1.5px solid #f0f0f0;
-    }
-
-    .form-card .card-header h3 { font-size: 0.95rem; font-weight: 700; color: #333; flex: 1; }
-    .form-card .card-header .field-count { font-size: 0.75rem; color: #aaa; }
-
-    .field-group { margin-bottom: 14px; }
-
-    .field-label {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 0.82rem;
-      font-weight: 700;
-      color: #444;
-      margin-bottom: 6px;
-    }
-
-    .field-num {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 18px;
-      height: 18px;
-      border-radius: 50%;
-      background: #667eea;
-      color: white;
-      font-size: 0.65rem;
-      font-weight: 700;
-      flex-shrink: 0;
-    }
-
-    .field-required { color: #e05; font-size: 0.7rem; margin-left: 2px; }
-
-    input[type="text"], textarea, select {
-      width: 100%;
-      padding: 10px 12px;
-      border: 1.5px solid #e0e0e0;
-      border-radius: 8px;
-      font-size: 0.9rem;
-      font-family: inherit;
-      color: #333;
-      background: #fafafa;
-      transition: border-color 0.2s;
-      -webkit-appearance: none;
-    }
-
-    input[type="text"]:focus, textarea:focus, select:focus {
-      outline: none;
-      border-color: #667eea;
-      background: white;
-    }
-
-    textarea { resize: vertical; min-height: 70px; line-height: 1.5; }
-
-    /* プレビュー */
-    .preview-card {
-      background: #1a1a2e;
-      border-radius: 12px;
-      padding: 16px;
-      margin-bottom: 16px;
-      position: relative;
-    }
-
-    .preview-card h3 { color: #aaa; font-size: 0.8rem; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
-
-    .preview-text {
-      color: #e8e8f0;
-      font-size: 0.88rem;
-      line-height: 1.7;
-      white-space: pre-wrap;
-      word-break: break-word;
-    }
-
-    .highlight { color: #f6c90e; font-weight: 600; }
-
-    /* ボタン */
-    .btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 12px 20px;
-      border: none;
-      border-radius: 10px;
-      font-size: 0.9rem;
-      font-weight: 700;
-      cursor: pointer;
-      transition: all 0.2s;
-      font-family: inherit;
-    }
-
-    .btn-primary {
-      background: linear-gradient(135deg, #667eea, #764ba2);
-      color: white;
-      width: 100%;
-      justify-content: center;
-      font-size: 1rem;
-      padding: 14px;
-    }
-
-    .btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
-    .btn-primary:active { transform: translateY(0); }
-
-    .btn-secondary {
-      background: #f0f2f5;
-      color: #555;
-      flex: 1;
-      justify-content: center;
-    }
-
-    .btn-secondary:hover { background: #e4e6eb; }
-
-    .btn-success {
-      background: #10b981;
-      color: white;
-      flex: 1;
-      justify-content: center;
-    }
-
-    .btn-success:hover { background: #059669; }
-
-    .btn-share {
-      background: #0ea5e9;
-      color: white;
-      flex: 1;
-      justify-content: center;
-    }
-
-    .btn-share:hover { background: #0284c7; }
-
-    .action-row { display: flex; gap: 8px; margin-bottom: 12px; }
-
-    /* カスタムテンプレート */
-    .custom-section { background: white; border-radius: 12px; padding: 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
-    .custom-section h3 { font-size: 0.95rem; font-weight: 700; margin-bottom: 8px; color: #444; }
-    .custom-section p { font-size: 0.78rem; color: #888; margin-bottom: 14px; line-height: 1.5; }
-
-    .hint-box {
-      background: #fff8e1;
-      border-left: 3px solid #ffc107;
-      padding: 10px 12px;
-      border-radius: 0 8px 8px 0;
-      font-size: 0.78rem;
-      color: #666;
-      margin-bottom: 14px;
-      line-height: 1.5;
-    }
-
-    /* シェアURLボックス */
-    .share-url-box {
-      background: #f0f9ff;
-      border: 1.5px solid #bae6fd;
-      border-radius: 10px;
-      padding: 12px 14px;
-      margin-bottom: 14px;
-      display: none;
-    }
-
-    .share-url-label {
-      font-size: 0.75rem;
-      font-weight: 700;
-      color: #0284c7;
-      margin-bottom: 8px;
-      display: flex;
-      align-items: center;
-      gap: 4px;
-    }
-
-    .share-url-row {
-      display: flex;
-      gap: 8px;
-      align-items: center;
-    }
-
-    .share-url-text {
-      flex: 1;
-      font-size: 0.75rem;
-      color: #444;
-      background: white;
-      border: 1px solid #e0f2fe;
-      border-radius: 6px;
-      padding: 7px 10px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      cursor: text;
-      user-select: all;
-    }
-
-    .btn-copy-url {
-      padding: 7px 12px;
-      background: #0ea5e9;
-      color: white;
-      border: none;
-      border-radius: 6px;
-      font-size: 0.75rem;
-      font-weight: 700;
-      cursor: pointer;
-      white-space: nowrap;
-      flex-shrink: 0;
-    }
-
-    .btn-copy-url:hover { background: #0284c7; }
-
-    /* インポートバナー */
-    .import-banner {
-      background: linear-gradient(135deg, #ecfdf5, #d1fae5);
-      border: 1.5px solid #6ee7b7;
-      border-radius: 12px;
-      padding: 14px 16px;
-      margin-bottom: 16px;
-      display: none;
-    }
-
-    .import-banner h4 { font-size: 0.9rem; font-weight: 700; color: #059669; margin-bottom: 4px; }
-    .import-banner p { font-size: 0.78rem; color: #065f46; margin-bottom: 10px; }
-    .import-banner .btn-row { display: flex; gap: 8px; }
-
-    /* エクスポート/インポートボタン */
-    .io-row {
-      display: flex;
-      gap: 8px;
-      margin-bottom: 14px;
-    }
-
-    .btn-export {
-      flex: 1;
-      padding: 10px;
-      background: #f0f2f5;
-      color: #555;
-      border: none;
-      border-radius: 8px;
-      font-size: 0.82rem;
-      font-weight: 700;
-      cursor: pointer;
-      font-family: inherit;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 4px;
-      transition: background 0.2s;
-    }
-
-    .btn-export:hover { background: #e4e6eb; }
-
-    .btn-import-label {
-      flex: 1;
-      padding: 10px;
-      background: #f0f9ff;
-      color: #0284c7;
-      border: 1.5px dashed #bae6fd;
-      border-radius: 8px;
-      font-size: 0.82rem;
-      font-weight: 700;
-      cursor: pointer;
-      font-family: inherit;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 4px;
-      transition: background 0.2s;
-      text-align: center;
-    }
-
-    .btn-import-label:hover { background: #e0f2fe; }
-
-    .saved-list { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
-
-    .saved-item {
-      background: #f8f7ff;
-      border: 1.5px solid #e0dbff;
-      border-radius: 8px;
-      padding: 10px 12px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .saved-item-info { flex: 1; min-width: 0; }
-    .saved-item-name { font-size: 0.85rem; font-weight: 600; color: #444; }
-    .saved-item-preview { font-size: 0.72rem; color: #888; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-
-    .saved-item-btns { display: flex; gap: 6px; flex-shrink: 0; }
-
-    .btn-tiny {
-      padding: 5px 10px;
-      border: none;
-      border-radius: 6px;
-      font-size: 0.75rem;
-      font-weight: 600;
-      cursor: pointer;
-      font-family: inherit;
-    }
-
-    .btn-use { background: #667eea; color: white; }
-    .btn-del { background: #fee2e2; color: #e05; }
-    .btn-share-tiny { background: #e0f2fe; color: #0284c7; }
-
-    /* トースト */
-    .toast {
-      position: fixed;
-      bottom: 24px;
-      left: 50%;
-      transform: translateX(-50%) translateY(80px);
-      background: #1a1a2e;
-      color: white;
-      padding: 12px 20px;
-      border-radius: 10px;
-      font-size: 0.85rem;
-      font-weight: 600;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-      transition: transform 0.3s;
-      z-index: 1000;
-      white-space: nowrap;
-    }
-
-    .toast.show { transform: translateX(-50%) translateY(0); }
-
-    /* 空状態 */
-    .empty-state { text-align: center; padding: 30px 16px; color: #aaa; }
-    .empty-state .icon { font-size: 2.5rem; margin-bottom: 8px; }
-    .empty-state p { font-size: 0.85rem; }
-
-    .step-indicator {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      margin-bottom: 16px;
-    }
-
-    .step { display: flex; align-items: center; gap: 4px; }
-
-    .step-num {
-      width: 22px; height: 22px;
-      border-radius: 50%;
-      background: #ddd;
-      color: #888;
-      font-size: 0.7rem;
-      font-weight: 700;
-      display: flex; align-items: center; justify-content: center;
-    }
-
-    .step-num.active { background: #667eea; color: white; }
-    .step-num.done { background: #10b981; color: white; }
-
-    .step-label { font-size: 0.72rem; color: #aaa; }
-    .step-label.active { color: #667eea; font-weight: 600; }
-
-    .step-sep { color: #ddd; font-size: 0.7rem; }
-
-    @media (max-width: 480px) {
-      .category-grid { grid-template-columns: repeat(2, 1fr); }
-      header h1 { font-size: 1.2rem; }
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AIプロンプトビルダー</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Yu Gothic UI', sans-serif; background: #f0f2f5; color: #1a1a2e; min-height: 100vh; }
+        header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 16px 20px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
+        header h1 { font-size: 1.4rem; font-weight: 700; }
+        header p { font-size: 0.8rem; opacity: 0.85; margin-top: 4px; }
+        .container { max-width: 720px; margin: 0 auto; padding: 16px; }
+        .tabs { display: flex; background: white; border-radius: 12px; padding: 4px; margin-bottom: 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.1); gap: 4px; }
+        .tab-btn { flex: 1; padding: 8px 4px; border: none; background: transparent; border-radius: 8px; font-size: 0.8rem; font-weight: 600; color: #888; cursor: pointer; transition: all 0.2s; }
+        .tab-btn.active { background: linear-gradient(135deg, #667eea, #764ba2); color: white; }
+        .tab-panel { display: none; }
+        .tab-panel.active { display: block; }
+        .category-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 16px; }
+        .category-card { background: white; border-radius: 12px; padding: 14px 12px; cursor: pointer; border: 2px solid transparent; box-shadow: 0 1px 4px rgba(0,0,0,0.08); transition: all 0.2s; text-align: center; }
+        .category-card:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.12); }
+        .category-card.selected { border-color: #667eea; background: #f0eeff; }
+        .category-icon { font-size: 1.8rem; margin-bottom: 6px; }
+        .category-name { font-size: 0.85rem; font-weight: 600; color: #333; }
+        .category-desc { font-size: 0.7rem; color: #888; margin-top: 2px; }
+        .template-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+        .template-item { background: white; border-radius: 10px; padding: 12px 14px; cursor: pointer; border: 2px solid transparent; box-shadow: 0 1px 4px rgba(0,0,0,0.08); transition: all 0.2s; }
+        .template-item:hover { border-color: #aaa; }
+        .template-item.selected { border-color: #667eea; background: #f8f7ff; }
+        .template-name { font-size: 0.9rem; font-weight: 700; color: #333; }
+        .template-preview { font-size: 0.75rem; color: #888; margin-top: 4px; line-height: 1.4; }
+        .tpl-preview-card { background: #1a1a2e; border-radius: 12px; padding: 16px; margin-bottom: 14px; }
+        .tpl-preview-card .card-label { color: #888; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+        .tpl-preview-content { color: #c8c8d8; font-size: 0.86rem; line-height: 1.8; white-space: pre-wrap; word-break: break-word; }
+        .blank-empty { display: inline-block; background: rgba(246,201,14,0.15); border: 1.5px dashed #f6c90e; border-radius: 4px; color: #f6c90e; font-weight: 700; padding: 0 4px; font-size: 0.82rem; }
+        .blank-filled { display: inline-block; background: rgba(102,210,150,0.15); border-radius: 4px; color: #6dd49e; font-weight: 700; padding: 0 4px; font-size: 0.86rem; }
+        .form-card { background: white; border-radius: 12px; padding: 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); margin-bottom: 16px; }
+        .form-card .card-header { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1.5px solid #f0f0f0; }
+        .form-card .card-header h3 { font-size: 0.95rem; font-weight: 700; color: #333; flex: 1; }
+        .form-card .card-header .field-count { font-size: 0.75rem; color: #10b981; font-weight: 600; }
+        .field-group { margin-bottom: 14px; }
+        .field-label { display: flex; align-items: center; gap: 6px; font-size: 0.82rem; font-weight: 700; color: #444; margin-bottom: 6px; }
+        .field-num { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; background: #667eea; color: white; font-size: 0.65rem; font-weight: 700; flex-shrink: 0; }
+        .field-optional { color: #bbb; font-size: 0.68rem; margin-left: 2px; }
+        input[type="text"], textarea, select { width: 100%; padding: 10px 12px; border: 1.5px solid #e0e0e0; border-radius: 8px; font-size: 0.9rem; font-family: inherit; color: #333; background: #fafafa; transition: border-color 0.2s; -webkit-appearance: none; }
+        input[type="text"]:focus, textarea:focus, select:focus { outline: none; border-color: #667eea; background: white; }
+        textarea { resize: vertical; min-height: 70px; line-height: 1.5; }
+        .preview-card { background: #1a1a2e; border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+        .preview-card h3 { color: #aaa; font-size: 0.8rem; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .preview-text { color: #e8e8f0; font-size: 0.88rem; line-height: 1.7; white-space: pre-wrap; word-break: break-word; }
+        .highlight { color: #f6c90e; font-weight: 600; }
+        .btn { display: inline-flex; align-items: center; gap: 6px; padding: 12px 20px; border: none; border-radius: 10px; font-size: 0.9rem; font-weight: 700; cursor: pointer; transition: all 0.2s; font-family: inherit; }
+        .btn-primary { background: linear-gradient(135deg, #667eea, #764ba2); color: white; width: 100%; justify-content: center; font-size: 1rem; padding: 14px; }
+        .btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
+        .btn-secondary { background: #f0f2f5; color: #555; flex: 1; justify-content: center; }
+        .btn-secondary:hover { background: #e4e6eb; }
+        .btn-success { background: #10b981; color: white; flex: 1; justify-content: center; }
+        .btn-success:hover { background: #059669; }
+        .btn-share { background: #0ea5e9; color: white; flex: 1; justify-content: center; }
+        .btn-share:hover { background: #0284c7; }
+        .btn-fill-share { background: #8b5cf6; color: white; flex: 1; justify-content: center; }
+        .btn-fill-share:hover { background: #7c3aed; }
+        .action-row { display: flex; gap: 8px; margin-bottom: 12px; }
+        .custom-section { background: white; border-radius: 12px; padding: 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+        .custom-section h3 { font-size: 0.95rem; font-weight: 700; margin-bottom: 8px; color: #444; }
+        .custom-section p { font-size: 0.78rem; color: #888; margin-bottom: 14px; line-height: 1.5; }
+        .share-url-box { background: #f0f9ff; border: 1.5px solid #bae6fd; border-radius: 10px; padding: 12px 14px; margin-bottom: 14px; display: none; }
+        .share-url-label { font-size: 0.75rem; font-weight: 700; color: #0284c7; margin-bottom: 8px; display: flex; align-items: center; gap: 4px; }
+        .share-url-row { display: flex; gap: 8px; align-items: center; }
+        .share-url-text { flex: 1; font-size: 0.75rem; color: #444; background: white; border: 1px solid #e0f2fe; border-radius: 6px; padding: 7px 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: text; user-select: all; }
+        .btn-copy-url { padding: 7px 12px; background: #0ea5e9; color: white; border: none; border-radius: 6px; font-size: 0.75rem; font-weight: 700; cursor: pointer; white-space: nowrap; flex-shrink: 0; }
+        .btn-copy-url:hover { background: #0284c7; }
+        .fill-share-url-box { background: #faf5ff; border: 1.5px solid #d8b4fe; border-radius: 10px; padding: 12px 14px; margin-bottom: 14px; display: none; }
+        .fill-share-url-label { font-size: 0.75rem; font-weight: 700; color: #7c3aed; margin-bottom: 8px; display: flex; align-items: center; gap: 4px; }
+        .btn-copy-fill-url { padding: 7px 12px; background: #8b5cf6; color: white; border: none; border-radius: 6px; font-size: 0.75rem; font-weight: 700; cursor: pointer; white-space: nowrap; flex-shrink: 0; }
+        .btn-copy-fill-url:hover { background: #7c3aed; }
+        .import-banner { background: linear-gradient(135deg, #ecfdf5, #d1fae5); border: 1.5px solid #6ee7b7; border-radius: 12px; padding: 14px 16px; margin-bottom: 16px; display: none; }
+        .import-banner h4 { font-size: 0.9rem; font-weight: 700; color: #059669; margin-bottom: 4px; }
+        .import-banner p { font-size: 0.78rem; color: #065f46; margin-bottom: 10px; }
+        .import-banner .btn-row { display: flex; gap: 8px; }
+        .io-row { display: flex; gap: 8px; margin-bottom: 14px; }
+        .btn-export { flex: 1; padding: 10px; background: #f0f2f5; color: #555; border: none; border-radius: 8px; font-size: 0.82rem; font-weight: 700; cursor: pointer; font-family: inherit; display: flex; align-items: center; justify-content: center; gap: 4px; transition: background 0.2s; }
+        .btn-export:hover { background: #e4e6eb; }
+        .btn-import-label { flex: 1; padding: 10px; background: #f0f9ff; color: #0284c7; border: 1.5px dashed #bae6fd; border-radius: 8px; font-size: 0.82rem; font-weight: 700; cursor: pointer; font-family: inherit; display: flex; align-items: center; justify-content: center; gap: 4px; transition: background 0.2s; text-align: center; }
+        .btn-import-label:hover { background: #e0f2fe; }
+        .saved-list { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
+        .saved-item { background: #f8f7ff; border: 1.5px solid #e0dbff; border-radius: 8px; padding: 10px 12px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+        .saved-item-info { flex: 1; min-width: 0; }
+        .saved-item-name { font-size: 0.85rem; font-weight: 600; color: #444; }
+        .saved-item-preview { font-size: 0.72rem; color: #888; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .saved-item-btns { display: flex; gap: 6px; flex-shrink: 0; }
+        .btn-tiny { padding: 5px 10px; border: none; border-radius: 6px; font-size: 0.75rem; font-weight: 600; cursor: pointer; font-family: inherit; }
+        .btn-use { background: #667eea; color: white; }
+        .btn-del { background: #fee2e2; color: #e05; }
+        .btn-share-tiny { background: #e0f2fe; color: #0284c7; }
+        .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px); background: #1a1a2e; color: white; padding: 12px 20px; border-radius: 10px; font-size: 0.85rem; font-weight: 600; box-shadow: 0 4px 20px rgba(0,0,0,0.3); transition: transform 0.3s; z-index: 1000; white-space: nowrap; }
+        .toast.show { transform: translateX(-50%) translateY(0); }
+        .empty-state { text-align: center; padding: 30px 16px; color: #aaa; }
+        .empty-state .icon { font-size: 2.5rem; margin-bottom: 8px; }
+        .empty-state p { font-size: 0.85rem; }
+        .step-indicator { display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 16px; }
+        .step { display: flex; align-items: center; gap: 4px; }
+        .step-num { width: 22px; height: 22px; border-radius: 50%; background: #ddd; color: #888; font-size: 0.7rem; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+        .step-num.active { background: #667eea; color: white; }
+        .step-num.done { background: #10b981; color: white; }
+        .step-label { font-size: 0.72rem; color: #aaa; }
+        .step-label.active { color: #667eea; font-weight: 600; }
+        .step-sep { color: #ddd; font-size: 0.7rem; }
+
+        /* 添付ファイル共通 */
+        .attach-section { margin-bottom: 16px; }
+        .attach-section-label { font-size: 0.82rem; font-weight: 700; color: #444; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+        .attach-zone { border: 2px dashed #d0d0e0; border-radius: 10px; padding: 18px 12px; text-align: center; cursor: pointer; background: #fafafa; transition: all 0.2s; }
+        .attach-zone:hover, .attach-zone.dragover { border-color: #667eea; background: #f0eeff; }
+        .attach-zone-icon { font-size: 1.8rem; margin-bottom: 4px; }
+        .attach-zone p { font-size: 0.8rem; color: #999; margin-top: 4px; }
+        .attach-zone span { font-size: 0.72rem; color: #bbb; }
+        .attach-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+        .attach-item { display: flex; align-items: center; gap: 6px; background: #f0eeff; border: 1px solid #c8c0f0; border-radius: 8px; padding: 6px 8px; max-width: 200px; }
+        .attach-thumb { width: 32px; height: 32px; object-fit: cover; border-radius: 4px; flex-shrink: 0; }
+        .attach-pdf-icon { font-size: 1.4rem; flex-shrink: 0; line-height: 1; }
+        .attach-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.72rem; color: #555; }
+        .attach-del { background: none; border: none; cursor: pointer; color: #bbb; font-size: 0.85rem; padding: 0; line-height: 1; flex-shrink: 0; }
+        .attach-del:hover { color: #e05; }
+        .attach-result { margin-bottom: 16px; padding: 10px 14px; background: #f5f3ff; border-radius: 10px; border-left: 3px solid #8b5cf6; }
+        .attach-result-label { font-size: 0.72rem; font-weight: 700; color: #7c3aed; margin-bottom: 8px; }
+        .attach-result-item { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: 0.8rem; color: #555; }
+        .attach-result-thumb { width: 36px; height: 36px; object-fit: cover; border-radius: 4px; flex-shrink: 0; }
+
+        @media (max-width: 480px) { .category-grid { grid-template-columns: repeat(2, 1fr); } header h1 { font-size: 1.2rem; } }
+    </style>
 </head>
 <body>
+    <header>
+        <h1>🤖 AIプロンプトビルダー</h1>
+        <p>テンプレートを選んで穴埋めするだけ</p>
+    </header>
 
-<header>
-  <h1>🤖 AIプロンプトビルダー</h1>
-  <p>テンプレートを選んで穴埋めするだけ</p>
-</header>
-
-<div class="container">
-
-  <!-- シェアURLからのインポートバナー -->
-  <div class="import-banner" id="import-banner">
-    <h4>📨 テンプレートが共有されています</h4>
-    <p id="import-banner-desc">共有されたカスタムテンプレートをインポートできます。</p>
-    <div class="btn-row">
-      <button class="btn btn-success" style="font-size:0.85rem;padding:8px 16px" onclick="importFromUrl()">✅ インポートする</button>
-      <button class="btn btn-secondary" style="font-size:0.85rem;padding:8px 16px" onclick="dismissImportBanner()">✕ 閉じる</button>
-    </div>
-  </div>
-
-  <!-- タブ -->
-  <div class="tabs">
-    <button class="tab-btn active" onclick="switchTab('builder')">📝 ビルダー</button>
-    <button class="tab-btn" onclick="switchTab('custom')">✏️ カスタム</button>
-    <button class="tab-btn" onclick="switchTab('saved')">💾 保存済み</button>
-  </div>
-
-  <!-- ビルダータブ -->
-  <div id="tab-builder" class="tab-panel active">
-
-    <!-- ステップ表示 -->
-    <div class="step-indicator" id="step-indicator">
-      <div class="step">
-        <div class="step-num active" id="sn1">1</div>
-        <div class="step-label active" id="sl1">カテゴリ</div>
-      </div>
-      <div class="step-sep">›</div>
-      <div class="step">
-        <div class="step-num" id="sn2">2</div>
-        <div class="step-label" id="sl2">テンプレ</div>
-      </div>
-      <div class="step-sep">›</div>
-      <div class="step">
-        <div class="step-num" id="sn3">3</div>
-        <div class="step-label" id="sl3">入力</div>
-      </div>
-      <div class="step-sep">›</div>
-      <div class="step">
-        <div class="step-num" id="sn4">4</div>
-        <div class="step-label" id="sl4">完成</div>
-      </div>
-    </div>
-
-    <!-- Step1: カテゴリ -->
-    <div id="step1">
-      <div class="category-grid" id="category-grid"></div>
-    </div>
-
-    <!-- Step2: テンプレート -->
-    <div id="step2" style="display:none">
-      <div class="template-list" id="template-list"></div>
-      <button class="btn btn-secondary" style="width:100%" onclick="goStep(1)">← 戻る</button>
-    </div>
-
-    <!-- Step3: 入力フォーム -->
-    <div id="step3" style="display:none">
-
-      <div class="tpl-preview-card">
-        <div class="card-label">
-          <span>📄</span> テンプレートプレビュー
-          <span style="margin-left:auto;font-size:0.68rem;color:#666">入力すると自動で反映されます</span>
+    <div class="container">
+        <div id="import-banner" class="import-banner">
+            <h4>📨 テンプレートが共有されています</h4>
+            <p id="import-banner-desc">共有されたカスタムテンプレートをインポートできます。</p>
+            <div class="btn-row">
+                <button class="btn btn-success" onclick="importFromUrl()">✅ インポートする</button>
+                <button class="btn btn-secondary" onclick="dismissImportBanner()">✕ 閉じる</button>
+            </div>
         </div>
-        <div class="tpl-preview-content" id="tpl-live-preview"></div>
-      </div>
 
-      <div class="form-card">
-        <div class="card-header">
-          <h3 id="form-title">✏️ 穴埋め入力</h3>
-          <span class="field-count" id="field-progress"></span>
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('builder')">📝 ビルダー</button>
+            <button class="tab-btn" onclick="switchTab('custom')">✏️ カスタム</button>
+            <button class="tab-btn" onclick="switchTab('saved')">💾 保存済み</button>
         </div>
-        <div id="form-fields"></div>
-      </div>
 
-      <button class="btn btn-primary" onclick="generatePrompt()">✨ プロンプトを生成</button>
-      <br><br>
-      <button class="btn btn-secondary" style="width:100%;margin-top:0" onclick="goStep(2)">← 戻る</button>
-    </div>
+        <!-- ビルダータブ -->
+        <div id="tab-builder" class="tab-panel active">
+            <div class="step-indicator">
+                <div class="step"><div id="sn1" class="step-num active">1</div><span id="sl1" class="step-label active">カテゴリ</span></div>
+                <span class="step-sep">›</span>
+                <div class="step"><div id="sn2" class="step-num">2</div><span id="sl2" class="step-label">テンプレ</span></div>
+                <span class="step-sep">›</span>
+                <div class="step"><div id="sn3" class="step-num">3</div><span id="sl3" class="step-label">入力</span></div>
+                <span class="step-sep">›</span>
+                <div class="step"><div id="sn4" class="step-num">4</div><span id="sl4" class="step-label">完成</span></div>
+            </div>
 
-    <!-- Step4: 結果 -->
-    <div id="step4" style="display:none">
-      <div class="preview-card">
-        <h3>生成されたプロンプト</h3>
-        <div class="preview-text" id="result-text"></div>
-      </div>
+            <div id="step1">
+                <div style="margin-bottom:12px;color:#888;font-size:0.8rem;">1. カテゴリを選択</div>
+                <div id="category-grid" class="category-grid"></div>
+            </div>
 
-      <!-- シェアURLボックス -->
-      <div class="share-url-box" id="share-url-box">
-        <div class="share-url-label">🔗 シェアURL（このURLを送るだけで共有できます）</div>
-        <div class="share-url-row">
-          <div class="share-url-text" id="share-url-text"></div>
-          <button class="btn-copy-url" onclick="copyShareUrl()">コピー</button>
+            <div id="step2" style="display:none;">
+                <div style="margin-bottom:12px;display:flex;align-items:center;gap:8px;color:#888;font-size:0.8rem;">
+                    <button class="btn btn-secondary" onclick="goStep(1)" style="flex:none;padding:6px 10px;font-size:0.75rem;">← 戻る</button>
+                    <span>2. テンプレートを選択</span>
+                </div>
+                <div id="template-list" class="template-list"></div>
+            </div>
+
+            <div id="step3" style="display:none;">
+                <div style="margin-bottom:12px;display:flex;align-items:center;gap:8px;color:#888;font-size:0.8rem;">
+                    <button class="btn btn-secondary" onclick="goStep(2)" style="flex:none;padding:6px 10px;font-size:0.75rem;">← 戻る</button>
+                    <span>3. 入力（すべて任意）</span>
+                </div>
+
+                <div id="fill-share-url-box" class="fill-share-url-box">
+                    <div class="fill-share-url-label">🔗 穴埋めシェアURL（受け取った人がそのまま穴埋めできます）</div>
+                    <div class="share-url-row">
+                        <div id="fill-share-url-text" class="share-url-text"></div>
+                        <button class="btn-copy-fill-url" onclick="copyFillShareUrl()">コピー</button>
+                    </div>
+                </div>
+
+                <div class="tpl-preview-card">
+                    <div class="card-label">📄 テンプレートプレビュー <span style="margin-left:auto;color:#999;">入力すると自動で反映されます</span></div>
+                    <div id="tpl-live-preview" class="tpl-preview-content"></div>
+                </div>
+
+                <div class="form-card">
+                    <div class="card-header">
+                        <h3 id="form-title">✏️ 穴埋め入力</h3>
+                        <div class="field-count">すべて任意</div>
+                    </div>
+                    <div id="form-fields"></div>
+
+                    <div class="attach-section">
+                        <div class="attach-section-label">📎 ファイルを添付 <span class="field-optional">（任意 / PDF・PNG・JPG）</span></div>
+                        <div class="attach-zone" id="attach-zone"
+                            onclick="document.getElementById('file-input').click()"
+                            ondragover="onDragOver(event,'attach-zone')"
+                            ondragleave="onDragLeave(event,'attach-zone')"
+                            ondrop="onDrop(event,'builder')">
+                            <div class="attach-zone-icon">📂</div>
+                            <p>クリックまたはドラッグ＆ドロップ</p>
+                            <span>PDF・PNG・JPG（各10MBまで）</span>
+                        </div>
+                        <input type="file" id="file-input" multiple accept=".pdf,.png,.jpg,.jpeg,image/png,image/jpeg,application/pdf" style="display:none" onchange="handleFileAttach(event,'builder')">
+                        <div class="attach-list" id="attach-list"></div>
+                    </div>
+
+                    <div class="action-row">
+                        <button class="btn btn-fill-share" onclick="shareForFill()">🔗 穴埋めURLをシェア</button>
+                    </div>
+                    <button class="btn btn-primary" onclick="generatePrompt()">✨ プロンプトを生成</button>
+                </div>
+            </div>
+
+            <div id="step4" style="display:none;">
+                <div style="margin-bottom:12px;display:flex;align-items:center;gap:8px;color:#888;font-size:0.8rem;">
+                    <button class="btn btn-secondary" onclick="goStep(3)" style="flex:none;padding:6px 10px;font-size:0.75rem;">← 戻る</button>
+                    <span>4. 完成</span>
+                </div>
+
+                <div class="preview-card">
+                    <h3>生成されたプロンプト</h3>
+                    <div id="result-text" class="preview-text"></div>
+                </div>
+
+                <div id="result-attachments" style="display:none;" class="attach-result">
+                    <div class="attach-result-label">📎 添付ファイル（AIチャットに貼り付け時に一緒に添付してください）</div>
+                    <div id="result-attach-list"></div>
+                </div>
+
+                <div id="share-url-box" class="share-url-box">
+                    <div class="share-url-label">🔗 シェアURL（プロンプト全文を共有）</div>
+                    <div class="share-url-row">
+                        <div id="share-url-text" class="share-url-text"></div>
+                        <button class="btn-copy-url" onclick="copyShareUrl()">コピー</button>
+                    </div>
+                </div>
+
+                <div class="action-row">
+                    <button class="btn btn-secondary" onclick="copyPrompt()">📋 コピー</button>
+                    <button class="btn btn-share" onclick="sharePromptViaUrl()">🔗 URLシェア</button>
+                </div>
+                <div class="action-row">
+                    <button class="btn btn-success" onclick="savePrompt()">💾 このプロンプトを保存</button>
+                    <button class="btn btn-secondary" onclick="goStep(1)">🔄 最初からやり直す</button>
+                </div>
+            </div>
         </div>
-      </div>
 
-      <div class="action-row">
-        <button class="btn btn-success" onclick="copyPrompt()">📋 コピー</button>
-        <button class="btn btn-share" onclick="sharePromptViaUrl()">🔗 URLシェア</button>
-        <button class="btn btn-secondary" onclick="goStep(3)">← 編集</button>
-      </div>
-      <button class="btn btn-secondary" style="width:100%;margin-bottom:8px" onclick="savePrompt()">💾 このプロンプトを保存</button>
-      <button class="btn btn-secondary" style="width:100%" onclick="goStep(1)">🔄 最初からやり直す</button>
-    </div>
+        <!-- カスタムタブ -->
+        <div id="tab-custom" class="tab-panel">
+            <div class="custom-section">
+                <h3>カスタムテンプレートを作成</h3>
+                <p>穴埋め部分は <strong>{{変数名}}</strong> の形式で書いてください。<br>例: <em>「{{言語}}で{{機能}}を実装するコードを書いて」</em></p>
+                <div class="field-group">
+                    <label class="field-label"><span class="field-num">1</span>テンプレート名</label>
+                    <input type="text" id="custom-name" placeholder="例: よく使う接頭辞" autocomplete="off">
+                </div>
+                <div class="field-group">
+                    <label class="field-label"><span class="field-num">2</span>テンプレート本文</label>
+                    <textarea id="custom-body" placeholder="例: {{言語}}で{{機能}}を実装するコードを書いて…"></textarea>
+                </div>
+                <div id="custom-preview-wrap" style="display:none;margin-bottom:14px;">
+                    <div class="preview-card">
+                        <h3>プレビュー</h3>
+                        <div id="custom-preview-text" class="preview-text"></div>
+                    </div>
+                </div>
 
-  </div>
+                <!-- カスタムタブ用 添付ファイル -->
+                <div class="attach-section">
+                    <div class="attach-section-label">📎 ファイルを添付 <span class="field-optional">（任意 / PDF・PNG・JPG）</span></div>
+                    <div class="attach-zone" id="custom-attach-zone"
+                        onclick="document.getElementById('custom-file-input').click()"
+                        ondragover="onDragOver(event,'custom-attach-zone')"
+                        ondragleave="onDragLeave(event,'custom-attach-zone')"
+                        ondrop="onDrop(event,'custom')">
+                        <div class="attach-zone-icon">📂</div>
+                        <p>クリックまたはドラッグ＆ドロップ</p>
+                        <span>PDF・PNG・JPG（各10MBまで）</span>
+                    </div>
+                    <input type="file" id="custom-file-input" multiple accept=".pdf,.png,.jpg,.jpeg,image/png,image/jpeg,application/pdf" style="display:none" onchange="handleFileAttach(event,'custom')">
+                    <div class="attach-list" id="custom-attach-list"></div>
+                </div>
 
-  <!-- カスタムタブ -->
-  <div id="tab-custom" class="tab-panel">
-    <div class="custom-section">
-      <h3>カスタムテンプレートを作成</h3>
-      <div class="hint-box">
-        穴埋め部分は <strong>{{変数名}}</strong> の形式で書いてください。<br>
-        例: <em>「{{言語}}で{{機能}}を実装するコードを書いて」</em>
-      </div>
+                <button class="btn btn-primary" onclick="saveCustomTemplate()">💾 テンプレートを保存</button>
+            </div>
 
-      <div class="field-group">
-        <label class="field-label">テンプレート名 <span class="field-required">必須</span></label>
-        <input type="text" id="custom-name" placeholder="例: コードレビュー依頼">
-      </div>
-
-      <div class="field-group">
-        <label class="field-label">テンプレート本文 <span class="field-required">必須</span></label>
-        <textarea id="custom-body" rows="6" placeholder="例: {{言語}}で書かれた以下のコードをレビューしてください。&#10;&#10;特に{{観点}}の観点から確認し、改善点があれば具体的に教えてください。&#10;&#10;コード:&#10;{{コード}}"></textarea>
-      </div>
-
-      <button class="btn btn-primary" onclick="saveCustomTemplate()">💾 テンプレートを保存</button>
-
-      <div id="custom-preview-wrap" style="margin-top:14px; display:none">
-        <div class="preview-card">
-          <h3>プレビュー</h3>
-          <div class="preview-text" id="custom-preview-text"></div>
+            <div class="custom-section" style="margin-top:16px;">
+                <h3>保存済みカスタムテンプレート</h3>
+                <p>テンプレートをURLで共有したり、JSONファイルでバックアップ・インポートできます。</p>
+                <div class="io-row">
+                    <button class="btn-export" onclick="exportTemplates()">📤 JSONエクスポート</button>
+                    <label class="btn-import-label">📥 JSONインポート<input type="file" accept=".json" onchange="importTemplates(event)" style="display:none;"></label>
+                </div>
+                <div id="custom-template-list" class="empty-state">
+                    <div class="icon">📋</div>
+                    <p>まだカスタムテンプレートはありません</p>
+                </div>
+            </div>
         </div>
-      </div>
-    </div>
 
-    <!-- 保存済みカスタムテンプレート一覧 -->
-    <div class="custom-section" style="margin-top:14px">
-      <h3>保存済みカスタムテンプレート</h3>
-      <p>テンプレートをURLで共有したり、JSONファイルでバックアップ・インポートできます。</p>
-
-      <!-- エクスポート/インポートボタン -->
-      <div class="io-row">
-        <button class="btn-export" onclick="exportTemplates()">📤 JSONエクスポート</button>
-        <label class="btn-import-label">
-          📥 JSONインポート
-          <input type="file" accept=".json" style="display:none" onchange="importTemplates(event)">
-        </label>
-      </div>
-
-      <div id="custom-template-list">
-        <div class="empty-state">
-          <div class="icon">📋</div>
-          <p>まだカスタムテンプレートはありません</p>
+        <!-- 保存済みタブ -->
+        <div id="tab-saved" class="tab-panel">
+            <div class="custom-section">
+                <h3>保存済みプロンプト</h3>
+                <p>生成したプロンプトをここに保存して再利用できます。🔗ボタンでURLシェアも可能です。</p>
+                <div id="saved-list-container" class="empty-state">
+                    <div class="icon">📂</div>
+                    <p>まだ保存されたプロンプトはありません</p>
+                </div>
+            </div>
         </div>
-      </div>
     </div>
-  </div>
 
-  <!-- 保存済みタブ -->
-  <div id="tab-saved" class="tab-panel">
-    <div class="custom-section">
-      <h3>保存済みプロンプト</h3>
-      <p>生成したプロンプトをここに保存して再利用できます。🔗ボタンでURLシェアも可能です。</p>
-      <div id="saved-list-container">
-        <div class="empty-state">
-          <div class="icon">📂</div>
-          <p>まだ保存されたプロンプトはありません</p>
-        </div>
-      </div>
-    </div>
-  </div>
-
-</div>
-
-<div class="toast" id="toast"></div>
-
-<script>
-// ============================================================
-// データ定義
-// ============================================================
-const CATEGORIES = [
-  { id: 'writing', icon: '✍️', name: '文章作成', desc: 'ブログ・メール・記事' },
-  { id: 'code',    icon: '💻', name: 'コード',   desc: '実装・デバッグ・レビュー' },
-  { id: 'summary', icon: '📝', name: '要約・分析', desc: '要約・リスト化・比較' },
-  { id: 'idea',    icon: '💡', name: 'アイデア',  desc: 'ブレスト・企画・提案' },
-  { id: 'trans',   icon: '🌏', name: '翻訳・言い換え', desc: '翻訳・リライト' },
-  { id: 'qa',      icon: '🎓', name: '学習・QA', desc: '説明・質問・教育' },
-  { id: 'business',icon: '💼', name: 'ビジネス', desc: '企画書・提案・報告' },
-  { id: 'custom',  icon: '⚙️', name: 'カスタム', desc: '自作テンプレート' },
-];
-
-const TEMPLATES = {
-  writing: [
-    {
-      id: 'blog',
-      name: 'ブログ記事を書く',
-      preview: 'テーマ・ターゲット・文体を指定して記事を生成',
-      fields: [
-        { key: 'theme',    label: 'テーマ・タイトル',   type: 'text',     placeholder: '例: 初心者向けPythonの始め方' },
-        { key: 'target',   label: 'ターゲット読者',      type: 'text',     placeholder: '例: プログラミング未経験の20代社会人' },
-        { key: 'length',   label: '文字数の目安',        type: 'select',   options: ['800文字程度', '1500文字程度', '3000文字程度', '5000文字程度'] },
-        { key: 'tone',     label: '文体・トーン',        type: 'select',   options: ['です・ます調（丁寧）', 'だ・である調（硬め）', 'カジュアル・フレンドリー', '専門的・フォーマル'] },
-        { key: 'points',   label: '含めたいポイント（任意）', type: 'textarea', placeholder: '例: SEOを意識する、具体例を多く入れる', required: false },
-      ],
-      template: `以下の条件でブログ記事を書いてください。
-
-【テーマ】{{theme}}
-【ターゲット読者】{{target}}
-【文字数】{{length}}
-【文体】{{tone}}
-{{points_block}}
-構成は「導入→本文（見出し付き）→まとめ」の形式でお願いします。読者が最後まで読みたくなるような、具体的でわかりやすい内容にしてください。`,
-    },
-    {
-      id: 'email',
-      name: 'ビジネスメールを書く',
-      preview: '目的・相手・状況を指定してメールを生成',
-      fields: [
-        { key: 'purpose',  label: 'メールの目的',   type: 'text',     placeholder: '例: 打ち合わせの日程調整をお願いする' },
-        { key: 'recipient',label: '宛先・相手',     type: 'text',     placeholder: '例: 取引先の田中部長' },
-        { key: 'situation',label: '背景・状況',     type: 'textarea', placeholder: '例: 先週の会議で概要を話し合い、詳細を詰めたい' },
-        { key: 'tone',     label: '丁寧さのレベル', type: 'select',   options: ['かなり丁寧（初めての相手）', '普通（通常の取引先）', 'ややカジュアル（親しい関係）'] },
-      ],
-      template: `以下の条件でビジネスメールを作成してください。
-
-【目的】{{purpose}}
-【宛先】{{recipient}}
-【背景・状況】{{situation}}
-【トーン】{{tone}}
-
-件名と本文を含め、実際に送れる形式で書いてください。`,
-    },
-    {
-      id: 'sns',
-      name: 'SNS投稿文を書く',
-      preview: 'SNS・内容・ゴールを指定して投稿文を生成',
-      fields: [
-        { key: 'platform', label: 'SNSの種類',     type: 'select',   options: ['X（Twitter）', 'Instagram', 'Facebook', 'LinkedIn', 'note'] },
-        { key: 'content',  label: '伝えたい内容',  type: 'textarea', placeholder: '例: 新しいサービスをリリースしました。〇〇の悩みを解決します' },
-        { key: 'goal',     label: '目的・ゴール',  type: 'select',   options: ['フォロワー獲得・認知拡大', '商品・サービスの宣伝', 'エンゲージメント（いいね・コメント）増加', '情報発信・教育'] },
-        { key: 'hashtag',  label: 'ハッシュタグ（任意）', type: 'text', placeholder: '例: #マーケティング #スタートアップ', required: false },
-      ],
-      template: `以下の条件で{{platform}}の投稿文を作成してください。
-
-【伝えたい内容】{{content}}
-【目的】{{goal}}
-{{hashtag_block}}
-{{platform}}のアルゴリズムとユーザー行動に合わせた、思わず読みたくなる投稿文を3パターン作成してください。`,
-    },
-  ],
-
-  code: [
-    {
-      id: 'implement',
-      name: 'コードを実装する',
-      preview: '言語・機能・条件を指定してコード生成',
-      fields: [
-        { key: 'lang',        label: 'プログラミング言語',  type: 'text',     placeholder: '例: Python、TypeScript、Go' },
-        { key: 'feature',     label: '実装したい機能',      type: 'textarea', placeholder: '例: CSVファイルを読み込んで重複行を除去し、結果をJSONで出力する' },
-        { key: 'constraints', label: '制約・条件（任意）',  type: 'textarea', placeholder: '例: 外部ライブラリは使わない、エラーハンドリングを入れる', required: false },
-        { key: 'style',       label: 'コードスタイル',      type: 'select',   options: ['コメントを詳しく書く', 'コメントは最小限', '関数型スタイル', 'OOP（クラスベース）'] },
-      ],
-      template: `以下の仕様で{{lang}}のコードを実装してください。
-
-【機能】{{feature}}
-{{constraints_block}}
-【スタイル】{{style}}
-
-実装後に、コードの動作説明と使用例も添えてください。`,
-    },
-    {
-      id: 'debug',
-      name: 'バグを修正する',
-      preview: 'エラー内容・コードを渡してデバッグ依頼',
-      fields: [
-        { key: 'lang',     label: '言語',             type: 'text',     placeholder: '例: JavaScript' },
-        { key: 'error',    label: 'エラーメッセージ', type: 'textarea', placeholder: 'エラー文をここに貼り付け' },
-        { key: 'code',     label: '問題のコード',      type: 'textarea', placeholder: 'コードをここに貼り付け' },
-        { key: 'expected', label: '期待する動作',      type: 'textarea', placeholder: '例: ボタンを押すとモーダルが表示される' },
-      ],
-      template: `以下の{{lang}}のコードにあるバグを修正してください。
-
-【エラーメッセージ】
-{{error}}
-
-【問題のコード】
-\`\`\`{{lang}}
-{{code}}
-\`\`\`
-
-【期待する動作】
-{{expected}}
-
-バグの原因と修正方法を説明した上で、修正済みのコードを提示してください。`,
-    },
-    {
-      id: 'review',
-      name: 'コードレビューを依頼する',
-      preview: 'コードを渡してレビュー観点を指定',
-      fields: [
-        { key: 'lang',     label: '言語',          type: 'text',     placeholder: '例: TypeScript' },
-        { key: 'code',     label: 'レビューするコード', type: 'textarea', placeholder: 'コードをここに貼り付け' },
-        { key: 'focus',    label: '重視する観点',   type: 'select',   options: ['全体的なコード品質', 'パフォーマンス・最適化', 'セキュリティ', '可読性・保守性', 'バグ・エラー処理'] },
-        { key: 'level',    label: 'フィードバックの詳しさ', type: 'select', options: ['簡潔に要点のみ', '標準的な詳しさ', '詳細に（理由・改善例も）'] },
-      ],
-      template: `以下の{{lang}}コードをレビューしてください。
-
-【重視する観点】{{focus}}
-【フィードバックの詳しさ】{{level}}
-
-\`\`\`{{lang}}
-{{code}}
-\`\`\`
-
-問題点と改善提案を具体的に教えてください。良い点もあれば挙げてください。`,
-    },
-  ],
-
-  summary: [
-    {
-      id: 'summarize',
-      name: 'テキストを要約する',
-      preview: '文章・長さ・形式を指定して要約生成',
-      fields: [
-        { key: 'text',   label: '要約するテキスト', type: 'textarea', placeholder: '要約したい文章をここに貼り付け' },
-        { key: 'length', label: '要約の長さ',        type: 'select',   options: ['3行以内', '100文字以内', '200〜300文字', '箇条書き5項目以内'] },
-        { key: 'focus',  label: '重点を置く内容（任意）', type: 'text', placeholder: '例: 数字・データの部分、結論と提案', required: false },
-      ],
-      template: `以下のテキストを要約してください。
-
-【要約の長さ】{{length}}
-{{focus_block}}
----
-{{text}}
----
-
-核心的な内容が伝わる要約をお願いします。`,
-    },
-    {
-      id: 'compare',
-      name: '2つのものを比較する',
-      preview: '比較対象・観点を指定して比較表を生成',
-      fields: [
-        { key: 'item1',   label: '比較対象A',   type: 'text',     placeholder: '例: React' },
-        { key: 'item2',   label: '比較対象B',   type: 'text',     placeholder: '例: Vue.js' },
-        { key: 'context', label: '利用シーン・前提', type: 'text', placeholder: '例: 小規模なWebアプリ開発' },
-        { key: 'aspects', label: '比較する観点（任意）', type: 'text', placeholder: '例: 学習コスト、パフォーマンス、エコシステム', required: false },
-      ],
-      template: `「{{item1}}」と「{{item2}}」を比較してください。
-
-【利用シーン・前提】{{context}}
-{{aspects_block}}
-比較表（マークダウン形式）と、それぞれが向いているケースのまとめを教えてください。`,
-    },
-  ],
-
-  idea: [
-    {
-      id: 'brainstorm',
-      name: 'アイデアをブレスト',
-      preview: 'テーマ・条件を指定してアイデアを大量生成',
-      fields: [
-        { key: 'theme',       label: 'ブレストのテーマ',  type: 'text',     placeholder: '例: 個人開発で作れるWebサービス' },
-        { key: 'constraints', label: '条件・制約',        type: 'text',     placeholder: '例: 1人で開発可能、技術はNext.js' },
-        { key: 'count',       label: 'アイデアの数',      type: 'select',   options: ['5個', '10個', '20個', '30個'] },
-        { key: 'style',       label: 'アイデアのスタイル',type: 'select',   options: ['実現可能な現実的なもの', '斬新・ユニークなもの', '現実的なものと斬新なものを混ぜて'] },
-      ],
-      template: `以下のテーマでブレインストーミングをしてください。
-
-【テーマ】{{theme}}
-【条件・制約】{{constraints}}
-【アイデア数】{{count}}
-【スタイル】{{style}}
-
-各アイデアについて、タイトルと一行説明を付けてリストアップしてください。`,
-    },
-    {
-      id: 'naming',
-      name: 'ネーミングを考える',
-      preview: '商品・サービス・条件を指定してネーミング案を生成',
-      fields: [
-        { key: 'target',    label: '何のネーミングか',    type: 'text',     placeholder: '例: 新しいサブスクリプションサービス' },
-        { key: 'concept',   label: 'コンセプト・特徴',    type: 'textarea', placeholder: '例: 毎日のタスク管理を楽しくするAIアシスタント' },
-        { key: 'style',     label: '好みのスタイル',      type: 'select',   options: ['短くてキャッチー', '意味のある和製英語', '英単語・造語', '日本語', '何でもOK'] },
-        { key: 'count',     label: '候補の数',            type: 'select',   options: ['5個', '10個', '15個'] },
-      ],
-      template: `以下の条件でネーミング案を考えてください。
-
-【対象】{{target}}
-【コンセプト・特徴】{{concept}}
-【スタイル】{{style}}
-【候補数】{{count}}
-
-各案にネーミングの由来・意味も添えてください。`,
-    },
-  ],
-
-  trans: [
-    {
-      id: 'translate',
-      name: 'テキストを翻訳する',
-      preview: '翻訳元・言語・スタイルを指定して翻訳',
-      fields: [
-        { key: 'from',  label: '翻訳元の言語',  type: 'text',     placeholder: '例: 英語（自動判定でもOK）' },
-        { key: 'to',    label: '翻訳先の言語',  type: 'text',     placeholder: '例: 日本語' },
-        { key: 'style', label: '翻訳スタイル',  type: 'select',   options: ['自然な表現（意訳OK）', '原文に忠実（直訳寄り）', 'ビジネス文書向け', 'カジュアル・日常会話向け'] },
-        { key: 'text',  label: '翻訳するテキスト', type: 'textarea', placeholder: 'テキストをここに貼り付け' },
-      ],
-      template: `以下のテキストを{{from}}から{{to}}に翻訳してください。
-
-【スタイル】{{style}}
-
----
-{{text}}
----
-
-翻訳後のテキストのみを出力してください。`,
-    },
-    {
-      id: 'rewrite',
-      name: '文章を言い換える',
-      preview: 'トーン・目的を変えて文章をリライト',
-      fields: [
-        { key: 'text',    label: '元の文章',          type: 'textarea', placeholder: '言い換えたい文章をここに貼り付け' },
-        { key: 'purpose', label: 'リライトの目的',     type: 'select',   options: ['より丁寧・フォーマルに', 'よりカジュアル・親しみやすく', 'より簡潔・シンプルに', 'より具体的・詳しく', 'SEO向けに最適化'] },
-        { key: 'count',   label: 'バリエーション数',   type: 'select',   options: ['1パターン', '2パターン', '3パターン'] },
-      ],
-      template: `以下の文章をリライトしてください。
-
-【目的】{{purpose}}
-【バリエーション数】{{count}}
-
----
-{{text}}
----
-
-{{count}}のリライト案を提示してください。`,
-    },
-  ],
-
-  qa: [
-    {
-      id: 'explain',
-      name: '概念・技術を説明してもらう',
-      preview: 'トピック・レベルを指定してわかりやすく解説',
-      fields: [
-        { key: 'topic',   label: '説明してほしいトピック', type: 'text',     placeholder: '例: Dockerコンテナの仕組み' },
-        { key: 'level',   label: '自分の知識レベル',       type: 'select',   options: ['完全に初心者', '基礎は知っている', '中級者', '上級者（深掘りしたい）'] },
-        { key: 'format',  label: '説明の形式',             type: 'select',   options: ['例え話を使ってわかりやすく', '箇条書きで整理して', '図や構造を文字で表現して', 'ステップバイステップで'] },
-        { key: 'focus',   label: '特に知りたい点（任意）', type: 'text',     placeholder: '例: なぜ必要なのか、実務でどう使うか', required: false },
-      ],
-      template: `「{{topic}}」について説明してください。
-
-【私の知識レベル】{{level}}
-【説明の形式】{{format}}
-{{focus_block}}
-理解しやすいよう、具体例も交えて教えてください。`,
-    },
-    {
-      id: 'quiz',
-      name: '理解度チェック問題を作る',
-      preview: 'テーマ・難易度を指定して問題を生成',
-      fields: [
-        { key: 'theme',  label: '問題のテーマ',   type: 'text',     placeholder: '例: SQL基礎、英文法、Pythonの関数' },
-        { key: 'level',  label: '難易度',         type: 'select',   options: ['初級', '中級', '上級', '初級〜上級ミックス'] },
-        { key: 'count',  label: '問題数',         type: 'select',   options: ['3問', '5問', '10問'] },
-        { key: 'format', label: '形式',           type: 'select',   options: ['4択問題', '記述問題', '〇×問題', 'ミックス'] },
-      ],
-      template: `「{{theme}}」に関する{{format}}を{{count}}作成してください。
-
-【難易度】{{level}}
-
-各問題に解答と解説もつけてください。`,
-    },
-  ],
-
-  business: [
-    {
-      id: 'proposal',
-      name: '企画書・提案書を作る',
-      preview: '企画の概要・目的・条件を指定して提案書を生成',
-      fields: [
-        { key: 'title',    label: '企画名・タイトル',  type: 'text',     placeholder: '例: 社内副業制度の導入提案' },
-        { key: 'purpose',  label: '目的・背景',        type: 'textarea', placeholder: '例: 人材流出を防ぎ、社員のスキルアップを促進するため' },
-        { key: 'target',   label: '対象・スコープ',    type: 'text',     placeholder: '例: 全社員（正社員のみ）' },
-        { key: 'audience', label: '提案先・読者',      type: 'text',     placeholder: '例: 経営陣、人事部長' },
-        { key: 'extras',   label: '含めたい内容（任意）', type: 'textarea', placeholder: '例: 期待効果、コスト試算、スケジュール案', required: false },
-      ],
-      template: `以下の条件で企画書・提案書の構成と内容を作成してください。
-
-【企画名】{{title}}
-【目的・背景】{{purpose}}
-【対象・スコープ】{{target}}
-【提案先】{{audience}}
-{{extras_block}}
-「課題→提案内容→期待効果→実施計画→まとめ」の構成で、説得力のある提案書を作成してください。`,
-    },
-    {
-      id: 'meeting',
-      name: '会議のアジェンダを作る',
-      preview: '会議の目的・参加者・時間を指定してアジェンダ生成',
-      fields: [
-        { key: 'purpose',   label: '会議の目的',      type: 'text',     placeholder: '例: 新機能のリリース日程と担当の確認' },
-        { key: 'attendees', label: '参加者',          type: 'text',     placeholder: '例: プロダクトマネージャー、エンジニア3名、デザイナー' },
-        { key: 'duration',  label: '会議時間',        type: 'select',   options: ['30分', '45分', '60分', '90分', '120分'] },
-        { key: 'topics',    label: '話し合いたいこと', type: 'textarea', placeholder: '例: 現状の進捗確認、ブロッカーの共有、次のアクション決定' },
-      ],
-      template: `以下の条件で会議のアジェンダを作成してください。
-
-【目的】{{purpose}}
-【参加者】{{attendees}}
-【会議時間】{{duration}}
-【話し合いたいこと】{{topics}}
-
-時間配分を含むアジェンダと、事前に準備しておくべき資料・情報のリストも作成してください。`,
-    },
-  ],
-
-  custom: [],
-};
-
-// ============================================================
-// 状態管理
-// ============================================================
-let state = {
-  step: 1,
-  category: null,
-  template: null,
-  fieldValues: {},
-  generatedPrompt: '',
-  pendingImport: null,
-};
-
-// ============================================================
-// 初期化
-// ============================================================
-function init() {
-  renderCategories();
-  loadSavedList();
-  loadCustomTemplates();
-  document.getElementById('custom-body').addEventListener('input', updateCustomPreview);
-  checkUrlShare();
-}
-
-// ============================================================
-// URLシェア確認（ページ読み込み時）
-// ============================================================
-function checkUrlShare() {
-  const hash = location.hash;
-  if (!hash.startsWith('#share=')) return;
-
-  try {
-    const encoded = hash.slice(7);
-    const data = JSON.parse(decodeURIComponent(escape(atob(encoded))));
-
-    if (data.type === 'prompt') {
-      state.generatedPrompt = data.text;
-      document.getElementById('result-text').textContent = data.text;
-      document.getElementById('share-url-box').style.display = 'none';
-      goStep(4);
-      showToast('🔗 シェアされたプロンプトを読み込みました');
-      history.replaceState(null, '', location.pathname);
-
-    } else if (data.type === 'template') {
-      state.pendingImport = data.template;
-      document.getElementById('import-banner-desc').textContent =
-        '「' + data.template.name + '」をあなたのカスタムテンプレートに追加できます。';
-      document.getElementById('import-banner').style.display = 'block';
-      history.replaceState(null, '', location.pathname);
-    }
-  } catch(e) {
-    // 無効なハッシュは無視
-  }
-}
-
-function importFromUrl() {
-  if (!state.pendingImport) return;
-  const t = state.pendingImport;
-  t.id = 'custom_' + Date.now();
-  const customs = JSON.parse(localStorage.getItem('custom_templates') || '[]');
-  customs.unshift(t);
-  localStorage.setItem('custom_templates', JSON.stringify(customs));
-  loadCustomTemplates();
-  dismissImportBanner();
-  switchTab('custom');
-  showToast('✅ テンプレートをインポートしました！');
-}
-
-function dismissImportBanner() {
-  document.getElementById('import-banner').style.display = 'none';
-  state.pendingImport = null;
-}
-
-// ============================================================
-// カテゴリ描画
-// ============================================================
-function renderCategories() {
-  const grid = document.getElementById('category-grid');
-  grid.innerHTML = CATEGORIES.map(c => `
-    <div class="category-card" onclick="selectCategory('${c.id}')">
-      <div class="category-icon">${c.icon}</div>
-      <div class="category-name">${c.name}</div>
-      <div class="category-desc">${c.desc}</div>
-    </div>
-  `).join('');
-}
-
-function selectCategory(id) {
-  state.category = id;
-  document.querySelectorAll('.category-card').forEach(el => el.classList.remove('selected'));
-  event.currentTarget.classList.add('selected');
-
-  if (id === 'custom') {
-    const customs = loadCustomTemplates();
-    if (customs.length === 0) {
-      showToast('まず「カスタム」タブでテンプレートを作成してください');
-      switchTab('custom');
-      return;
-    }
-    TEMPLATES.custom = customs;
-  }
-
-  setTimeout(() => goStep(2), 200);
-}
-
-// ============================================================
-// テンプレート描画
-// ============================================================
-function renderTemplates(categoryId) {
-  const list = document.getElementById('template-list');
-  const templates = TEMPLATES[categoryId] || [];
-
-  if (templates.length === 0) {
-    list.innerHTML = '<div class="empty-state"><div class="icon">📋</div><p>テンプレートがありません</p></div>';
-    return;
-  }
-
-  list.innerHTML = templates.map(t => `
-    <div class="template-item" onclick="selectTemplate('${t.id}', '${categoryId}')">
-      <div class="template-name">${t.name}</div>
-      <div class="template-preview">${t.preview || ''}</div>
-    </div>
-  `).join('');
-}
-
-function selectTemplate(id, categoryId) {
-  const template = (TEMPLATES[categoryId] || []).find(t => t.id === id);
-  if (!template) return;
-
-  state.template = template;
-  document.querySelectorAll('.template-item').forEach(el => el.classList.remove('selected'));
-  event.currentTarget.classList.add('selected');
-
-  setTimeout(() => goStep(3), 200);
-}
-
-// ============================================================
-// フォーム描画
-// ============================================================
-function renderForm(template) {
-  document.getElementById('form-title').textContent = template.name;
-  const container = document.getElementById('form-fields');
-
-  container.innerHTML = template.fields.map((f, idx) => {
-    const required = f.required !== false;
-    const reqBadge = required
-      ? '<span class="field-required">必須</span>'
-      : '<span style="color:#bbb;font-size:0.68rem">任意</span>';
-
-    let input = '';
-    if (f.type === 'text') {
-      input = `<input type="text" id="field-${f.key}" placeholder="${f.placeholder || ''}" autocomplete="off" oninput="updateLivePreview()">`;
-    } else if (f.type === 'textarea') {
-      input = `<textarea id="field-${f.key}" placeholder="${f.placeholder || ''}" rows="3" oninput="updateLivePreview()"></textarea>`;
-    } else if (f.type === 'select') {
-      const opts = f.options.map(o => `<option value="${o}">${o}</option>`).join('');
-      input = `<select id="field-${f.key}" onchange="updateLivePreview()">${opts}</select>`;
+    <div id="toast" class="toast"></div>
+
+    <script>
+    // ============================================================
+    // データ定義
+    // ============================================================
+    const CATEGORIES = [
+        { id: 'writing', icon: '✍️', name: '文章作成', desc: 'ブログ・メール・記事' },
+        { id: 'code', icon: '💻', name: 'コード', desc: '実装・デバッグ・レビュー' },
+        { id: 'summary', icon: '📝', name: '要約・分析', desc: '要約・リスト化・比較' },
+        { id: 'idea', icon: '💡', name: 'アイデア', desc: 'ブレスト・企画・提案' },
+        { id: 'trans', icon: '🌏', name: '翻訳・言い換え', desc: '翻訳・リライト' },
+        { id: 'qa', icon: '🎓', name: '学習・QA', desc: '説明・質問・教育' },
+        { id: 'business', icon: '💼', name: 'ビジネス', desc: '企画書・提案・報告' },
+        { id: 'custom', icon: '⚙️', name: 'カスタム', desc: '自作テンプレート' },
+    ];
+
+    const TEMPLATES = {
+        writing: [
+            {
+                id: 'blog', name: 'ブログ記事を書く', preview: 'テーマ・ターゲット・文体を指定して記事を生成',
+                fields: [
+                    { key: 'theme', label: 'テーマ・タイトル', type: 'text', placeholder: '例: 初心者向けPythonの始め方' },
+                    { key: 'target', label: 'ターゲット読者', type: 'text', placeholder: '例: プログラミング未経験の20代社会人' },
+                    { key: 'length', label: '文字数の目安', type: 'select', options: ['800文字程度', '1500文字程度', '3000文字程度', '5000文字程度'] },
+                    { key: 'tone', label: '文体・トーン', type: 'select', options: ['です・ます調（丁寧）', 'だ・である調（硬め）', 'カジュアル・フレンドリー', '専門的・フォーマル'] },
+                    { key: 'points', label: '含めたいポイント', type: 'textarea', placeholder: '例: SEOを意識する、具体例を多く入れる' },
+                ],
+                template: `以下の条件でブログ記事を書いてください。\n\n【テーマ】{{theme}}\n【ターゲット読者】{{target}}\n【文字数】{{length}}\n【文体】{{tone}}\n{{points_block}}\n構成は「導入→本文（見出し付き）→まとめ」の形式でお願いします。`,
+            },
+            {
+                id: 'email', name: 'ビジネスメールを書く', preview: '目的・相手・状況を指定してメールを生成',
+                fields: [
+                    { key: 'purpose', label: 'メールの目的', type: 'text', placeholder: '例: 打ち合わせの日程調整をお願いする' },
+                    { key: 'recipient', label: '宛先・相手', type: 'text', placeholder: '例: 取引先の田中部長' },
+                    { key: 'situation', label: '背景・状況', type: 'textarea', placeholder: '例: 先週の会議で概要を話し合い、詳細を詰めたい' },
+                    { key: 'tone', label: '丁寧さのレベル', type: 'select', options: ['かなり丁寧（初めての相手）', '普通（通常の取引先）', 'ややカジュアル（親しい関係）'] },
+                ],
+                template: `以下の条件でビジネスメールを作成してください。\n\n【目的】{{purpose}}\n【宛先】{{recipient}}\n【背景・状況】{{situation}}\n【トーン】{{tone}}\n\n件名と本文を含め、実際に送れる形式で書いてください。`,
+            },
+            {
+                id: 'sns', name: 'SNS投稿文を書く', preview: 'SNS・内容・ゴールを指定して投稿文を生成',
+                fields: [
+                    { key: 'platform', label: 'SNSの種類', type: 'select', options: ['X（Twitter）', 'Instagram', 'Facebook', 'LinkedIn', 'note'] },
+                    { key: 'content', label: '伝えたい内容', type: 'textarea', placeholder: '例: 新しいサービスをリリースしました' },
+                    { key: 'goal', label: '目的・ゴール', type: 'select', options: ['フォロワー獲得・認知拡大', '商品・サービスの宣伝', 'エンゲージメント増加', '情報発信・教育'] },
+                    { key: 'hashtag', label: 'ハッシュタグ', type: 'text', placeholder: '例: #マーケティング #スタートアップ' },
+                ],
+                template: `以下の条件で{{platform}}の投稿文を作成してください。\n\n【伝えたい内容】{{content}}\n【目的】{{goal}}\n{{hashtag_block}}\n投稿文を3パターン作成してください。`,
+            },
+        ],
+        code: [
+            {
+                id: 'implement', name: 'コードを実装する', preview: '言語・機能・条件を指定してコード生成',
+                fields: [
+                    { key: 'lang', label: 'プログラミング言語', type: 'text', placeholder: '例: Python、TypeScript、Go' },
+                    { key: 'feature', label: '実装したい機能', type: 'textarea', placeholder: '例: CSVファイルを読み込んで重複行を除去する' },
+                    { key: 'constraints', label: '制約・条件', type: 'textarea', placeholder: '例: 外部ライブラリは使わない' },
+                    { key: 'style', label: 'コードスタイル', type: 'select', options: ['コメントを詳しく書く', 'コメントは最小限', '関数型スタイル', 'OOP（クラスベース）'] },
+                ],
+                template: `以下の仕様で{{lang}}のコードを実装してください。\n\n【機能】{{feature}}\n{{constraints_block}}\n【スタイル】{{style}}\n\n実装後に、コードの動作説明と使用例も添えてください。`,
+            },
+            {
+                id: 'debug', name: 'バグを修正する', preview: 'エラー内容・コードを渡してデバッグ依頼',
+                fields: [
+                    { key: 'lang', label: '言語', type: 'text', placeholder: '例: JavaScript' },
+                    { key: 'error', label: 'エラーメッセージ', type: 'textarea', placeholder: 'エラー文をここに貼り付け' },
+                    { key: 'code', label: '問題のコード', type: 'textarea', placeholder: 'コードをここに貼り付け' },
+                    { key: 'expected', label: '期待する動作', type: 'textarea', placeholder: '例: ボタンを押すとモーダルが表示される' },
+                ],
+                template: `以下の{{lang}}のコードにあるバグを修正してください。\n\n【エラーメッセージ】\n{{error}}\n\n【問題のコード】\n\`\`\`{{lang}}\n{{code}}\n\`\`\`\n\n【期待する動作】\n{{expected}}\n\nバグの原因と修正方法を説明した上で、修正済みのコードを提示してください。`,
+            },
+            {
+                id: 'review', name: 'コードレビューを依頼する', preview: 'コードを渡してレビュー観点を指定',
+                fields: [
+                    { key: 'lang', label: '言語', type: 'text', placeholder: '例: TypeScript' },
+                    { key: 'code', label: 'レビューするコード', type: 'textarea', placeholder: 'コードをここに貼り付け' },
+                    { key: 'focus', label: '重視する観点', type: 'select', options: ['全体的なコード品質', 'パフォーマンス・最適化', 'セキュリティ', '可読性・保守性', 'バグ・エラー処理'] },
+                    { key: 'level', label: 'フィードバックの詳しさ', type: 'select', options: ['簡潔に要点のみ', '標準的な詳しさ', '詳細に（理由・改善例も）'] },
+                ],
+                template: `以下の{{lang}}コードをレビューしてください。\n\n【重視する観点】{{focus}}\n【フィードバックの詳しさ】{{level}}\n\n\`\`\`{{lang}}\n{{code}}\n\`\`\`\n\n問題点と改善提案を具体的に教えてください。`,
+            },
+        ],
+        summary: [
+            {
+                id: 'summarize', name: 'テキストを要約する', preview: '文章・長さ・形式を指定して要約生成',
+                fields: [
+                    { key: 'text', label: '要約するテキスト', type: 'textarea', placeholder: '要約したい文章をここに貼り付け' },
+                    { key: 'length', label: '要約の長さ', type: 'select', options: ['3行以内', '100文字以内', '200〜300文字', '箇条書き5項目以内'] },
+                    { key: 'focus', label: '重点を置く内容', type: 'text', placeholder: '例: 数字・データの部分、結論と提案' },
+                ],
+                template: `以下のテキストを要約してください。\n\n【要約の長さ】{{length}}\n{{focus_block}}\n---\n{{text}}\n---\n\n核心的な内容が伝わる要約をお願いします。`,
+            },
+            {
+                id: 'compare', name: '2つのものを比較する', preview: '比較対象・観点を指定して比較表を生成',
+                fields: [
+                    { key: 'item1', label: '比較対象A', type: 'text', placeholder: '例: React' },
+                    { key: 'item2', label: '比較対象B', type: 'text', placeholder: '例: Vue.js' },
+                    { key: 'context', label: '利用シーン・前提', type: 'text', placeholder: '例: 小規模なWebアプリ開発' },
+                    { key: 'aspects', label: '比較する観点', type: 'text', placeholder: '例: 学習コスト、パフォーマンス' },
+                ],
+                template: `「{{item1}}」と「{{item2}}」を比較してください。\n\n【利用シーン・前提】{{context}}\n{{aspects_block}}\n比較表（マークダウン形式）と、それぞれが向いているケースのまとめを教えてください。`,
+            },
+        ],
+        idea: [
+            {
+                id: 'brainstorm', name: 'アイデアをブレスト', preview: 'テーマ・条件を指定してアイデアを大量生成',
+                fields: [
+                    { key: 'theme', label: 'ブレストのテーマ', type: 'text', placeholder: '例: 個人開発で作れるWebサービス' },
+                    { key: 'constraints', label: '条件・制約', type: 'text', placeholder: '例: 1人で開発可能、技術はNext.js' },
+                    { key: 'count', label: 'アイデアの数', type: 'select', options: ['5個', '10個', '20個', '30個'] },
+                    { key: 'style', label: 'アイデアのスタイル', type: 'select', options: ['実現可能な現実的なもの', '斬新・ユニークなもの', '現実的なものと斬新なものを混ぜて'] },
+                ],
+                template: `以下のテーマでブレインストーミングをしてください。\n\n【テーマ】{{theme}}\n{{constraints_block}}\n【アイデア数】{{count}}\n【スタイル】{{style}}\n\n各アイデアについて、タイトルと一行説明を付けてリストアップしてください。`,
+            },
+            {
+                id: 'naming', name: 'ネーミングを考える', preview: '商品・サービス・条件を指定してネーミング案を生成',
+                fields: [
+                    { key: 'target', label: '何のネーミングか', type: 'text', placeholder: '例: 新しいサブスクリプションサービス' },
+                    { key: 'concept', label: 'コンセプト・特徴', type: 'textarea', placeholder: '例: 毎日のタスク管理を楽しくするAIアシスタント' },
+                    { key: 'style', label: '好みのスタイル', type: 'select', options: ['短くてキャッチー', '意味のある和製英語', '英単語・造語', '日本語', '何でもOK'] },
+                    { key: 'count', label: '候補の数', type: 'select', options: ['5個', '10個', '15個'] },
+                ],
+                template: `以下の条件でネーミング案を考えてください。\n\n【対象】{{target}}\n【コンセプト・特徴】{{concept}}\n【スタイル】{{style}}\n【候補数】{{count}}\n\n各案にネーミングの由来・意味も添えてください。`,
+            },
+        ],
+        trans: [
+            {
+                id: 'translate', name: 'テキストを翻訳する', preview: '翻訳元・言語・スタイルを指定して翻訳',
+                fields: [
+                    { key: 'from', label: '翻訳元の言語', type: 'text', placeholder: '例: 英語（自動判定でもOK）' },
+                    { key: 'to', label: '翻訳先の言語', type: 'text', placeholder: '例: 日本語' },
+                    { key: 'style', label: '翻訳スタイル', type: 'select', options: ['自然な表現（意訳OK）', '原文に忠実（直訳寄り）', 'ビジネス文書向け', 'カジュアル・日常会話向け'] },
+                    { key: 'text', label: '翻訳するテキスト', type: 'textarea', placeholder: 'テキストをここに貼り付け' },
+                ],
+                template: `以下のテキストを{{from}}から{{to}}に翻訳してください。\n\n【スタイル】{{style}}\n\n---\n{{text}}\n---\n\n翻訳後のテキストのみを出力してください。`,
+            },
+            {
+                id: 'rewrite', name: '文章を言い換える', preview: 'トーン・目的を変えて文章をリライト',
+                fields: [
+                    { key: 'text', label: '元の文章', type: 'textarea', placeholder: '言い換えたい文章をここに貼り付け' },
+                    { key: 'purpose', label: 'リライトの目的', type: 'select', options: ['より丁寧・フォーマルに', 'よりカジュアル・親しみやすく', 'より簡潔・シンプルに', 'より具体的・詳しく', 'SEO向けに最適化'] },
+                    { key: 'count', label: 'バリエーション数', type: 'select', options: ['1パターン', '2パターン', '3パターン'] },
+                ],
+                template: `以下の文章をリライトしてください。\n\n【目的】{{purpose}}\n【バリエーション数】{{count}}\n\n---\n{{text}}\n---\n\n{{count}}のリライト案を提示してください。`,
+            },
+        ],
+        qa: [
+            {
+                id: 'explain', name: '概念・技術を説明してもらう', preview: 'トピック・レベルを指定してわかりやすく解説',
+                fields: [
+                    { key: 'topic', label: '説明してほしいトピック', type: 'text', placeholder: '例: Dockerコンテナの仕組み' },
+                    { key: 'level', label: '自分の知識レベル', type: 'select', options: ['完全に初心者', '基礎は知っている', '中級者', '上級者（深掘りしたい）'] },
+                    { key: 'format', label: '説明の形式', type: 'select', options: ['例え話を使ってわかりやすく', '箇条書きで整理して', '図や構造を文字で表現して', 'ステップバイステップで'] },
+                    { key: 'focus', label: '特に知りたい点', type: 'text', placeholder: '例: なぜ必要なのか、実務でどう使うか' },
+                ],
+                template: `「{{topic}}」について説明してください。\n\n【私の知識レベル】{{level}}\n【説明の形式】{{format}}\n{{focus_block}}\n理解しやすいよう、具体例も交えて教えてください。`,
+            },
+            {
+                id: 'quiz', name: '理解度チェック問題を作る', preview: 'テーマ・難易度を指定して問題を生成',
+                fields: [
+                    { key: 'theme', label: '問題のテーマ', type: 'text', placeholder: '例: SQL基礎、英文法、Pythonの関数' },
+                    { key: 'level', label: '難易度', type: 'select', options: ['初級', '中級', '上級', '初級〜上級ミックス'] },
+                    { key: 'count', label: '問題数', type: 'select', options: ['3問', '5問', '10問'] },
+                    { key: 'format', label: '形式', type: 'select', options: ['4択問題', '記述問題', '〇×問題', 'ミックス'] },
+                ],
+                template: `「{{theme}}」に関する{{format}}を{{count}}作成してください。\n\n【難易度】{{level}}\n\n各問題に解答と解説もつけてください。`,
+            },
+        ],
+        business: [
+            {
+                id: 'proposal', name: '企画書・提案書を作る', preview: '企画の概要・目的・条件を指定して提案書を生成',
+                fields: [
+                    { key: 'title', label: '企画名・タイトル', type: 'text', placeholder: '例: 社内副業制度の導入提案' },
+                    { key: 'purpose', label: '目的・背景', type: 'textarea', placeholder: '例: 人材流出を防ぎ、社員のスキルアップを促進するため' },
+                    { key: 'target', label: '対象・スコープ', type: 'text', placeholder: '例: 全社員（正社員のみ）' },
+                    { key: 'audience', label: '提案先・読者', type: 'text', placeholder: '例: 経営陣、人事部長' },
+                    { key: 'extras', label: '含めたい内容', type: 'textarea', placeholder: '例: 期待効果、コスト試算、スケジュール案' },
+                ],
+                template: `以下の条件で企画書・提案書の構成と内容を作成してください。\n\n【企画名】{{title}}\n【目的・背景】{{purpose}}\n【対象・スコープ】{{target}}\n【提案先】{{audience}}\n{{extras_block}}\n「課題→提案内容→期待効果→実施計画→まとめ」の構成で作成してください。`,
+            },
+            {
+                id: 'meeting', name: '会議のアジェンダを作る', preview: '会議の目的・参加者・時間を指定してアジェンダ生成',
+                fields: [
+                    { key: 'purpose', label: '会議の目的', type: 'text', placeholder: '例: 新機能のリリース日程と担当の確認' },
+                    { key: 'attendees', label: '参加者', type: 'text', placeholder: '例: プロダクトマネージャー、エンジニア3名、デザイナー' },
+                    { key: 'duration', label: '会議時間', type: 'select', options: ['30分', '45分', '60分', '90分', '120分'] },
+                    { key: 'topics', label: '話し合いたいこと', type: 'textarea', placeholder: '例: 現状の進捗確認、ブロッカーの共有、次のアクション決定' },
+                ],
+                template: `以下の条件で会議のアジェンダを作成してください。\n\n【目的】{{purpose}}\n【参加者】{{attendees}}\n【会議時間】{{duration}}\n【話し合いたいこと】{{topics}}\n\n時間配分を含むアジェンダと、事前に準備しておくべき資料・情報のリストも作成してください。`,
+            },
+        ],
+        custom: [],
+    };
+
+    // ============================================================
+    // 状態管理
+    // ============================================================
+    let state = {
+        step: 1,
+        category: null,
+        template: null,
+        fieldValues: {},
+        generatedPrompt: '',
+        pendingImport: null,
+        attachments: [],        // ビルダータブ用
+        customAttachments: [],  // カスタムタブ用
+    };
+
+    // ============================================================
+    // 初期化
+    // ============================================================
+    function init() {
+        renderCategories();
+        loadSavedList();
+        loadCustomTemplates();
+        document.getElementById('custom-body').addEventListener('input', updateCustomPreview);
+        checkUrlShare();
     }
 
-    return `
-      <div class="field-group">
-        <label class="field-label">
-          <span class="field-num">${idx + 1}</span>
-          ${f.label}${reqBadge}
-        </label>
-        ${input}
-      </div>
-    `;
-  }).join('');
+    // ============================================================
+    // URLシェア確認
+    // ============================================================
+    function checkUrlShare() {
+        const hash = location.hash;
+        if (!hash.startsWith('#share=')) return;
+        try {
+            const data = JSON.parse(decodeURIComponent(escape(atob(hash.slice(7)))));
+            history.replaceState(null, '', location.pathname);
 
-  updateLivePreview();
-}
+            if (data.type === 'prompt') {
+                state.generatedPrompt = data.text;
+                document.getElementById('result-text').textContent = data.text;
+                document.getElementById('share-url-box').style.display = 'none';
+                goStep(4);
+                showToast('🔗 シェアされたプロンプトを読み込みました');
 
-// ============================================================
-// ライブプレビュー更新
-// ============================================================
-function updateLivePreview() {
-  const template = state.template;
-  if (!template) return;
+            } else if (data.type === 'fill') {
+                state.category = data.category;
+                if (data.category === 'custom') TEMPLATES.custom = loadCustomTemplates();
+                state.template = data.templateData
+                    ? data.templateData
+                    : (TEMPLATES[data.category] || []).find(t => t.id === data.templateId);
+                if (state.template) {
+                    goStep(3);
+                    if (data.values) {
+                        Object.keys(data.values).forEach(key => {
+                            const el = document.getElementById('field-' + key);
+                            if (el) el.value = data.values[key];
+                        });
+                        updateLivePreview();
+                    }
+                    showToast('🔗 シェアされたテンプレートを読み込みました');
+                }
 
-  const preview = document.getElementById('tpl-live-preview');
-  const progress = document.getElementById('field-progress');
-  if (!preview) return;
-
-  const values = {};
-  template.fields.forEach(f => {
-    const el = document.getElementById(`field-${f.key}`);
-    values[f.key] = el ? el.value.trim() : '';
-  });
-
-  const required = template.fields.filter(f => f.required !== false);
-  const filled = required.filter(f => values[f.key]);
-  if (progress) {
-    progress.textContent = `${filled.length} / ${required.length} 入力済み`;
-    progress.style.color = filled.length === required.length ? '#10b981' : '#f6a623';
-  }
-
-  let raw = template.template;
-  template.fields.forEach(f => {
-    const blockKey = `{{${f.key}_block}}`;
-    if (raw.includes(blockKey)) {
-      const val = values[f.key];
-      const label = f.label.replace('（任意）', '').trim();
-      raw = raw.replace(blockKey, val ? `【${label}】${val}\n` : '');
+            } else if (data.type === 'template') {
+                state.pendingImport = data.template;
+                document.getElementById('import-banner-desc').textContent =
+                    '「' + data.template.name + '」をあなたのカスタムテンプレートに追加できます。';
+                document.getElementById('import-banner').style.display = 'block';
+            }
+        } catch(e) {}
     }
-  });
 
-  const escaped = escHtml(raw);
-  const html = escaped.replace(/\{\{([^}]+)\}\}/g, (match, key) => {
-    const val = values[key];
-    if (val) {
-      return `<span class="blank-filled">${escHtml(val)}</span>`;
-    } else {
-      const field = template.fields.find(f => f.key === key);
-      const label = field ? field.label.replace('（任意）','').trim() : key;
-      return `<span class="blank-empty">　${label}　</span>`;
+    function importFromUrl() {
+        if (!state.pendingImport) return;
+        const t = state.pendingImport;
+        t.id = 'custom_' + Date.now();
+        const customs = JSON.parse(localStorage.getItem('custom_templates') || '[]');
+        customs.unshift(t);
+        localStorage.setItem('custom_templates', JSON.stringify(customs));
+        loadCustomTemplates();
+        dismissImportBanner();
+        switchTab('custom');
+        showToast('✅ テンプレートをインポートしました！');
     }
-  });
 
-  preview.innerHTML = html;
-}
-
-// ============================================================
-// テンプレートを値で埋めてテキストを生成
-// ============================================================
-function buildPromptText(template, values) {
-  let prompt = template.template;
-
-  template.fields.forEach(f => {
-    const blockKey = `{{${f.key}_block}}`;
-    if (prompt.includes(blockKey)) {
-      const val = values[f.key] || '';
-      const label = f.label.replace('（任意）', '').trim();
-      prompt = prompt.replace(blockKey, val ? `【${label}】${val}\n` : '');
+    function dismissImportBanner() {
+        document.getElementById('import-banner').style.display = 'none';
+        state.pendingImport = null;
     }
-  });
 
-  template.fields.forEach(f => {
-    const val = values[f.key] || '';
-    prompt = prompt.replace(new RegExp(`\\{\\{${f.key}\\}\\}`, 'g'), val);
-  });
-
-  prompt = prompt.replace(/\{\{[^}]+_block\}\}/g, '');
-
-  return prompt;
-}
-
-// ============================================================
-// プロンプト生成
-// ============================================================
-function generatePrompt() {
-  const template = state.template;
-  const values = {};
-  let firstErrorEl = null;
-
-  template.fields.forEach(f => {
-    const el = document.getElementById(`field-${f.key}`);
-    const val = el ? el.value.trim() : '';
-    const required = f.required !== false;
-
-    if (required && !val) {
-      if (el) {
-        el.style.borderColor = '#e05';
-        el.style.background = '#fff5f5';
-        if (!firstErrorEl) firstErrorEl = el;
-      }
-    } else {
-      if (el) {
-        el.style.borderColor = '';
-        el.style.background = '';
-      }
-      values[f.key] = val;
+    // ============================================================
+    // カテゴリ
+    // ============================================================
+    function renderCategories() {
+        document.getElementById('category-grid').innerHTML = CATEGORIES.map(c => `
+            <div class="category-card" onclick="selectCategory('${c.id}')">
+                <div class="category-icon">${c.icon}</div>
+                <div class="category-name">${c.name}</div>
+                <div class="category-desc">${c.desc}</div>
+            </div>
+        `).join('');
     }
-  });
 
-  if (firstErrorEl) {
-    showToast('必須項目を入力してください');
-    firstErrorEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    firstErrorEl.focus();
-    return;
-  }
-
-  state.fieldValues = values;
-  state.generatedPrompt = buildPromptText(template, values);
-  document.getElementById('result-text').textContent = state.generatedPrompt;
-  document.getElementById('share-url-box').style.display = 'none';
-  goStep(4);
-}
-
-// ============================================================
-// ステップ制御
-// ============================================================
-function goStep(n) {
-  state.step = n;
-
-  [1, 2, 3, 4].forEach(i => {
-    document.getElementById(`step${i}`).style.display = i === n ? '' : 'none';
-  });
-
-  if (n === 2) renderTemplates(state.category);
-  if (n === 3) renderForm(state.template);
-
-  [1, 2, 3, 4].forEach(i => {
-    const num = document.getElementById(`sn${i}`);
-    const label = document.getElementById(`sl${i}`);
-    if (i < n) {
-      num.className = 'step-num done';
-      num.textContent = '✓';
-    } else if (i === n) {
-      num.className = 'step-num active';
-      num.textContent = i;
-    } else {
-      num.className = 'step-num';
-      num.textContent = i;
-    }
-    label.className = 'step-label' + (i === n ? ' active' : '');
-  });
-
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-}
-
-// ============================================================
-// コピー
-// ============================================================
-function copyPrompt() {
-  const text = state.generatedPrompt;
-  if (!text) return;
-
-  if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(text).then(() => showToast('📋 コピーしました！'));
-  } else {
-    const ta = document.createElement('textarea');
-    ta.value = text;
-    ta.style.position = 'fixed';
-    ta.style.opacity = '0';
-    document.body.appendChild(ta);
-    ta.select();
-    document.execCommand('copy');
-    document.body.removeChild(ta);
-    showToast('📋 コピーしました！');
-  }
-}
-
-// ============================================================
-// URLシェア（生成済みプロンプト）
-// ============================================================
-function sharePromptViaUrl() {
-  const text = state.generatedPrompt;
-  if (!text) return;
-
-  try {
-    const data = JSON.stringify({ type: 'prompt', text });
-    const encoded = btoa(unescape(encodeURIComponent(data)));
-    const url = location.origin + location.pathname + '#share=' + encoded;
-
-    const box = document.getElementById('share-url-box');
-    document.getElementById('share-url-text').textContent = url;
-    box.style.display = 'block';
-    box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(url).then(() => showToast('🔗 シェアURLをコピーしました！'));
-    } else {
-      showToast('🔗 シェアURLを表示しました');
-    }
-  } catch(e) {
-    showToast('❌ URLの生成に失敗しました');
-  }
-}
-
-function copyShareUrl() {
-  const url = document.getElementById('share-url-text').textContent;
-  if (!url) return;
-  if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(url).then(() => showToast('🔗 URLをコピーしました！'));
-  } else {
-    const ta = document.createElement('textarea');
-    ta.value = url;
-    ta.style.position = 'fixed';
-    ta.style.opacity = '0';
-    document.body.appendChild(ta);
-    ta.select();
-    document.execCommand('copy');
-    document.body.removeChild(ta);
-    showToast('🔗 URLをコピーしました！');
-  }
-}
-
-// ============================================================
-// URLシェア（カスタムテンプレート）
-// ============================================================
-function shareTemplateViaUrl(id) {
-  const customs = JSON.parse(localStorage.getItem('custom_templates') || '[]');
-  const template = customs.find(t => t.id === id);
-  if (!template) return;
-
-  try {
-    const data = JSON.stringify({ type: 'template', template });
-    const encoded = btoa(unescape(encodeURIComponent(data)));
-    const url = location.origin + location.pathname + '#share=' + encoded;
-
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(url).then(() => showToast('🔗 テンプレートのシェアURLをコピーしました！'));
-    } else {
-      prompt('このURLをコピーして共有してください:', url);
-    }
-  } catch(e) {
-    showToast('❌ URLの生成に失敗しました');
-  }
-}
-
-// ============================================================
-// 保存
-// ============================================================
-function savePrompt() {
-  const text = state.generatedPrompt;
-  if (!text) return;
-
-  const saved = JSON.parse(localStorage.getItem('saved_prompts') || '[]');
-  const name = state.template ? state.template.name : 'プロンプト';
-  const entry = {
-    id: Date.now(),
-    name: name,
-    text: text,
-    date: new Date().toLocaleDateString('ja-JP'),
-  };
-  saved.unshift(entry);
-  if (saved.length > 50) saved.pop();
-  localStorage.setItem('saved_prompts', JSON.stringify(saved));
-  showToast('💾 保存しました！');
-  loadSavedList();
-}
-
-function loadSavedList() {
-  const saved = JSON.parse(localStorage.getItem('saved_prompts') || '[]');
-  const container = document.getElementById('saved-list-container');
-
-  if (saved.length === 0) {
-    container.innerHTML = '<div class="empty-state"><div class="icon">📂</div><p>まだ保存されたプロンプトはありません</p></div>';
-    return;
-  }
-
-  container.innerHTML = '<div class="saved-list">' + saved.map(s => `
-    <div class="saved-item">
-      <div class="saved-item-info">
-        <div class="saved-item-name">${escHtml(s.name)} <span style="color:#aaa;font-weight:400;font-size:0.7rem">${s.date}</span></div>
-        <div class="saved-item-preview">${escHtml(s.text.substring(0, 60))}...</div>
-      </div>
-      <div class="saved-item-btns">
-        <button class="btn-tiny btn-share-tiny" onclick="shareSavedPrompt(${s.id})">🔗</button>
-        <button class="btn-tiny btn-use" onclick="useSaved(${s.id})">使う</button>
-        <button class="btn-tiny btn-del" onclick="deleteSaved(${s.id})">削除</button>
-      </div>
-    </div>
-  `).join('') + '</div>';
-}
-
-function shareSavedPrompt(id) {
-  const saved = JSON.parse(localStorage.getItem('saved_prompts') || '[]');
-  const entry = saved.find(s => s.id === id);
-  if (!entry) return;
-
-  try {
-    const data = JSON.stringify({ type: 'prompt', text: entry.text });
-    const encoded = btoa(unescape(encodeURIComponent(data)));
-    const url = location.origin + location.pathname + '#share=' + encoded;
-
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(url).then(() => showToast('🔗 シェアURLをコピーしました！'));
-    } else {
-      prompt('このURLをコピーして共有してください:', url);
-    }
-  } catch(e) {
-    showToast('❌ URLの生成に失敗しました');
-  }
-}
-
-function useSaved(id) {
-  const saved = JSON.parse(localStorage.getItem('saved_prompts') || '[]');
-  const entry = saved.find(s => s.id === id);
-  if (!entry) return;
-
-  state.generatedPrompt = entry.text;
-  document.getElementById('result-text').textContent = entry.text;
-  document.getElementById('share-url-box').style.display = 'none';
-  switchTab('builder');
-  goStep(4);
-}
-
-function deleteSaved(id) {
-  const saved = JSON.parse(localStorage.getItem('saved_prompts') || '[]');
-  const updated = saved.filter(s => s.id !== id);
-  localStorage.setItem('saved_prompts', JSON.stringify(updated));
-  loadSavedList();
-  showToast('削除しました');
-}
-
-// ============================================================
-// カスタムテンプレート
-// ============================================================
-function saveCustomTemplate() {
-  const name = document.getElementById('custom-name').value.trim();
-  const body = document.getElementById('custom-body').value.trim();
-
-  if (!name || !body) {
-    showToast('名前と本文を入力してください');
-    return;
-  }
-
-  const matches = [...body.matchAll(/\{\{([^}]+)\}\}/g)];
-  const keys = [...new Set(matches.map(m => m[1]))];
-  const fields = keys.map(k => ({
-    key: k,
-    label: k,
-    type: k.length > 15 ? 'textarea' : 'text',
-    placeholder: `${k}を入力`,
-  }));
-
-  const template = {
-    id: 'custom_' + Date.now(),
-    name: name,
-    preview: body.substring(0, 50) + '...',
-    fields: fields,
-    template: body,
-  };
-
-  const customs = JSON.parse(localStorage.getItem('custom_templates') || '[]');
-  customs.unshift(template);
-  localStorage.setItem('custom_templates', JSON.stringify(customs));
-
-  document.getElementById('custom-name').value = '';
-  document.getElementById('custom-body').value = '';
-  document.getElementById('custom-preview-wrap').style.display = 'none';
-
-  showToast('✅ テンプレートを保存しました！');
-  loadCustomTemplates();
-}
-
-function loadCustomTemplates() {
-  const customs = JSON.parse(localStorage.getItem('custom_templates') || '[]');
-  TEMPLATES.custom = customs;
-
-  const container = document.getElementById('custom-template-list');
-  if (!container) return customs;
-
-  if (customs.length === 0) {
-    container.innerHTML = '<div class="empty-state"><div class="icon">📋</div><p>まだカスタムテンプレートはありません</p></div>';
-    return customs;
-  }
-
-  container.innerHTML = '<div class="saved-list">' + customs.map(t => `
-    <div class="saved-item">
-      <div class="saved-item-info">
-        <div class="saved-item-name">${escHtml(t.name)}</div>
-        <div class="saved-item-preview">${escHtml(t.template.substring(0, 50))}...</div>
-      </div>
-      <div class="saved-item-btns">
-        <button class="btn-tiny btn-share-tiny" onclick="shareTemplateViaUrl('${t.id}')">🔗 シェア</button>
-        <button class="btn-tiny btn-del" onclick="deleteCustomTemplate('${t.id}')">削除</button>
-      </div>
-    </div>
-  `).join('') + '</div>';
-
-  return customs;
-}
-
-function deleteCustomTemplate(id) {
-  const customs = JSON.parse(localStorage.getItem('custom_templates') || '[]');
-  const updated = customs.filter(t => t.id !== id);
-  localStorage.setItem('custom_templates', JSON.stringify(updated));
-  loadCustomTemplates();
-  showToast('削除しました');
-}
-
-// ============================================================
-// JSONエクスポート
-// ============================================================
-function exportTemplates() {
-  const customs = JSON.parse(localStorage.getItem('custom_templates') || '[]');
-  if (customs.length === 0) {
-    showToast('エクスポートするテンプレートがありません');
-    return;
-  }
-
-  const json = JSON.stringify(customs, null, 2);
-  const blob = new Blob([json], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = 'prompt-templates.json';
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-  showToast('📤 エクスポートしました');
-}
-
-// ============================================================
-// JSONインポート
-// ============================================================
-function importTemplates(event) {
-  const file = event.target.files[0];
-  if (!file) return;
-
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    try {
-      const imported = JSON.parse(e.target.result);
-      if (!Array.isArray(imported)) throw new Error('invalid format');
-
-      const customs = JSON.parse(localStorage.getItem('custom_templates') || '[]');
-      let count = 0;
-
-      imported.forEach((t, i) => {
-        if (t.name && t.template) {
-          t.id = 'custom_' + Date.now() + '_' + i;
-          customs.unshift(t);
-          count++;
+    function selectCategory(id) {
+        state.category = id;
+        document.querySelectorAll('.category-card').forEach(el => el.classList.remove('selected'));
+        event.currentTarget.classList.add('selected');
+        if (id === 'custom') {
+            const customs = loadCustomTemplates();
+            if (customs.length === 0) {
+                showToast('まず「カスタム」タブでテンプレートを作成してください');
+                switchTab('custom');
+                return;
+            }
+            TEMPLATES.custom = customs;
         }
-      });
-
-      localStorage.setItem('custom_templates', JSON.stringify(customs));
-      loadCustomTemplates();
-      showToast('✅ ' + count + '件のテンプレートをインポートしました');
-    } catch(e) {
-      showToast('❌ ファイルの読み込みに失敗しました');
+        setTimeout(() => goStep(2), 200);
     }
-  };
-  reader.readAsText(file);
-  event.target.value = '';
-}
 
-// ============================================================
-// カスタムプレビュー
-// ============================================================
-function updateCustomPreview() {
-  const body = document.getElementById('custom-body').value;
-  const wrap = document.getElementById('custom-preview-wrap');
-  const preview = document.getElementById('custom-preview-text');
+    // ============================================================
+    // テンプレート
+    // ============================================================
+    function renderTemplates(categoryId) {
+        const templates = TEMPLATES[categoryId] || [];
+        const list = document.getElementById('template-list');
+        if (templates.length === 0) {
+            list.innerHTML = '<div class="empty-state"><div class="icon">📋</div><p>テンプレートがありません</p></div>';
+            return;
+        }
+        list.innerHTML = templates.map(t => `
+            <div class="template-item" onclick="selectTemplate('${t.id}','${categoryId}')">
+                <div class="template-name">${t.name}</div>
+                <div class="template-preview">${t.preview || ''}</div>
+            </div>
+        `).join('');
+    }
 
-  if (body.trim()) {
-    wrap.style.display = '';
-    const html = escHtml(body).replace(/\{\{([^}]+)\}\}/g, '<span class="highlight">{{$1}}</span>');
-    preview.innerHTML = html;
-  } else {
-    wrap.style.display = 'none';
-  }
-}
+    function selectTemplate(id, categoryId) {
+        const template = (TEMPLATES[categoryId] || []).find(t => t.id === id);
+        if (!template) return;
+        state.template = template;
+        document.querySelectorAll('.template-item').forEach(el => el.classList.remove('selected'));
+        event.currentTarget.classList.add('selected');
+        setTimeout(() => goStep(3), 200);
+    }
 
-// ============================================================
-// タブ切り替え
-// ============================================================
-function switchTab(id) {
-  document.querySelectorAll('.tab-btn').forEach((btn, i) => {
-    const ids = ['builder', 'custom', 'saved'];
-    btn.classList.toggle('active', ids[i] === id);
-  });
-  document.querySelectorAll('.tab-panel').forEach(panel => panel.classList.remove('active'));
-  document.getElementById('tab-' + id).classList.add('active');
+    // ============================================================
+    // フォーム描画（全フィールド任意）
+    // ============================================================
+    function renderForm(template) {
+        document.getElementById('form-title').textContent = template.name;
+        document.getElementById('form-fields').innerHTML = template.fields.map((f, idx) => {
+            let input = '';
+            if (f.type === 'text') {
+                input = `<input type="text" id="field-${f.key}" placeholder="${f.placeholder||''}" autocomplete="off" oninput="updateLivePreview()">`;
+            } else if (f.type === 'textarea') {
+                input = `<textarea id="field-${f.key}" placeholder="${f.placeholder||''}" rows="3" oninput="updateLivePreview()"></textarea>`;
+            } else if (f.type === 'select') {
+                const opts = (f.options||[]).map(o => `<option value="${o}">${o}</option>`).join('');
+                input = `<select id="field-${f.key}" onchange="updateLivePreview()">${opts}</select>`;
+            }
+            return `<div class="field-group">
+                <label class="field-label">
+                    <span class="field-num">${idx+1}</span>${f.label}
+                    <span class="field-optional">任意</span>
+                </label>${input}</div>`;
+        }).join('');
 
-  if (id === 'saved') loadSavedList();
-  if (id === 'custom') loadCustomTemplates();
-}
+        state.attachments = [];
+        renderAttachmentList('attach-list', state.attachments);
+        document.getElementById('fill-share-url-box').style.display = 'none';
+        updateLivePreview();
+    }
 
-// ============================================================
-// ユーティリティ
-// ============================================================
-function showToast(msg) {
-  const toast = document.getElementById('toast');
-  toast.textContent = msg;
-  toast.classList.add('show');
-  setTimeout(() => toast.classList.remove('show'), 2500);
-}
+    // ============================================================
+    // ライブプレビュー
+    // ============================================================
+    function updateLivePreview() {
+        const template = state.template;
+        if (!template) return;
+        const preview = document.getElementById('tpl-live-preview');
+        if (!preview) return;
+        const values = {};
+        template.fields.forEach(f => {
+            const el = document.getElementById('field-' + f.key);
+            values[f.key] = el ? el.value.trim() : '';
+        });
+        let raw = template.template;
+        template.fields.forEach(f => {
+            const bk = '{{' + f.key + '_block}}';
+            if (raw.includes(bk)) {
+                raw = raw.replace(bk, values[f.key] ? '【' + f.label + '】' + values[f.key] + '\n' : '');
+            }
+        });
+        preview.innerHTML = escHtml(raw).replace(/\{\{([^}]+)\}\}/g, (m, key) => {
+            const val = values[key];
+            if (val) return '<span class="blank-filled">' + escHtml(val) + '</span>';
+            const field = template.fields.find(f => f.key === key);
+            return '<span class="blank-empty">　' + (field ? field.label : key) + '　</span>';
+        });
+    }
 
-function escHtml(str) {
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
+    // ============================================================
+    // プロンプトテキスト生成
+    // ============================================================
+    function buildPromptText(template, values) {
+        let prompt = template.template;
+        template.fields.forEach(f => {
+            const bk = '{{' + f.key + '_block}}';
+            if (prompt.includes(bk)) {
+                prompt = prompt.replace(bk, values[f.key] ? '【' + f.label + '】' + values[f.key] + '\n' : '');
+            }
+        });
+        template.fields.forEach(f => {
+            prompt = prompt.replace(new RegExp('\\{\\{' + f.key + '\\}\\}', 'g'), values[f.key] || '');
+        });
+        return prompt.replace(/\{\{[^}]+_block\}\}/g, '');
+    }
 
-// ============================================================
-// 起動
-// ============================================================
-init();
-</script>
+    // ============================================================
+    // プロンプト生成（バリデーションなし）
+    // ============================================================
+    function generatePrompt() {
+        const template = state.template;
+        const values = {};
+        template.fields.forEach(f => {
+            const el = document.getElementById('field-' + f.key);
+            values[f.key] = el ? el.value.trim() : '';
+        });
+        state.fieldValues = values;
+        state.generatedPrompt = buildPromptText(template, values);
+        document.getElementById('result-text').textContent = state.generatedPrompt;
+        document.getElementById('share-url-box').style.display = 'none';
+        renderResultAttachments();
+        goStep(4);
+    }
+
+    // ============================================================
+    // ステップ制御
+    // ============================================================
+    function goStep(n) {
+        state.step = n;
+        [1,2,3,4].forEach(i => {
+            document.getElementById('step'+i).style.display = i===n ? '' : 'none';
+        });
+        if (n === 2) renderTemplates(state.category);
+        if (n === 3) renderForm(state.template);
+        [1,2,3,4].forEach(i => {
+            const num = document.getElementById('sn'+i);
+            const lbl = document.getElementById('sl'+i);
+            if (i < n) { num.className='step-num done'; num.textContent='✓'; }
+            else if (i===n) { num.className='step-num active'; num.textContent=i; }
+            else { num.className='step-num'; num.textContent=i; }
+            lbl.className = 'step-label' + (i===n ? ' active' : '');
+        });
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // ============================================================
+    // 穴埋めURLシェア
+    // ============================================================
+    function shareForFill() {
+        if (!state.template || !state.category) return;
+        const values = {};
+        state.template.fields.forEach(f => {
+            const el = document.getElementById('field-' + f.key);
+            if (el) values[f.key] = el.value.trim();
+        });
+        try {
+            const payload = { type: 'fill', category: state.category, templateId: state.template.id, values };
+            if (state.category === 'custom') payload.templateData = state.template;
+            const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
+            const url = location.origin + location.pathname + '#share=' + encoded;
+            const box = document.getElementById('fill-share-url-box');
+            document.getElementById('fill-share-url-text').textContent = url;
+            box.style.display = 'block';
+            copyToClipboard(url, '🔗 穴埋めURLをコピーしました！');
+        } catch(e) { showToast('❌ URLの生成に失敗しました'); }
+    }
+
+    function copyFillShareUrl() {
+        copyToClipboard(document.getElementById('fill-share-url-text').textContent, '🔗 URLをコピーしました！');
+    }
+
+    // ============================================================
+    // コピー（添付ファイル名を末尾に付記）
+    // ============================================================
+    function copyPrompt() {
+        let text = state.generatedPrompt;
+        if (!text) return;
+        if (state.attachments.length > 0) {
+            text += '\n\n【添付ファイル】\n' + state.attachments.map(a => '・' + a.name).join('\n');
+        }
+        copyToClipboard(text, '📋 コピーしました！');
+    }
+
+    // ============================================================
+    // 完成プロンプトURLシェア
+    // ============================================================
+    function sharePromptViaUrl() {
+        const text = state.generatedPrompt;
+        if (!text) return;
+        try {
+            const encoded = btoa(unescape(encodeURIComponent(JSON.stringify({ type: 'prompt', text }))));
+            const url = location.origin + location.pathname + '#share=' + encoded;
+            document.getElementById('share-url-text').textContent = url;
+            const box = document.getElementById('share-url-box');
+            box.style.display = 'block';
+            box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            copyToClipboard(url, '🔗 シェアURLをコピーしました！');
+        } catch(e) { showToast('❌ URLの生成に失敗しました'); }
+    }
+
+    function copyShareUrl() {
+        copyToClipboard(document.getElementById('share-url-text').textContent, '🔗 URLをコピーしました！');
+    }
+
+    function shareTemplateViaUrl(id) {
+        const template = JSON.parse(localStorage.getItem('custom_templates') || '[]').find(t => t.id === id);
+        if (!template) return;
+        try {
+            const encoded = btoa(unescape(encodeURIComponent(JSON.stringify({ type: 'template', template }))));
+            copyToClipboard(location.origin + location.pathname + '#share=' + encoded, '🔗 テンプレートのシェアURLをコピーしました！');
+        } catch(e) { showToast('❌ URLの生成に失敗しました'); }
+    }
+
+    // ============================================================
+    // 保存済みプロンプト
+    // ============================================================
+    function savePrompt() {
+        const text = state.generatedPrompt;
+        if (!text) return;
+        const saved = JSON.parse(localStorage.getItem('saved_prompts') || '[]');
+        saved.unshift({ id: Date.now(), name: state.template ? state.template.name : 'プロンプト', text, date: new Date().toLocaleDateString('ja-JP') });
+        if (saved.length > 50) saved.pop();
+        localStorage.setItem('saved_prompts', JSON.stringify(saved));
+        showToast('💾 保存しました！');
+        loadSavedList();
+    }
+
+    function loadSavedList() {
+        const saved = JSON.parse(localStorage.getItem('saved_prompts') || '[]');
+        const container = document.getElementById('saved-list-container');
+        if (saved.length === 0) {
+            container.innerHTML = '<div class="empty-state"><div class="icon">📂</div><p>まだ保存されたプロンプトはありません</p></div>';
+            return;
+        }
+        container.innerHTML = '<div class="saved-list">' + saved.map(s => `
+            <div class="saved-item">
+                <div class="saved-item-info">
+                    <div class="saved-item-name">${escHtml(s.name)} <span style="color:#aaa;font-weight:400;font-size:0.7rem">${s.date}</span></div>
+                    <div class="saved-item-preview">${escHtml(s.text.substring(0,60))}...</div>
+                </div>
+                <div class="saved-item-btns">
+                    <button class="btn-tiny btn-share-tiny" onclick="shareSavedPrompt(${s.id})">🔗</button>
+                    <button class="btn-tiny btn-use" onclick="useSaved(${s.id})">使う</button>
+                    <button class="btn-tiny btn-del" onclick="deleteSaved(${s.id})">削除</button>
+                </div>
+            </div>
+        `).join('') + '</div>';
+    }
+
+    function shareSavedPrompt(id) {
+        const entry = JSON.parse(localStorage.getItem('saved_prompts') || '[]').find(s => s.id === id);
+        if (!entry) return;
+        try {
+            const encoded = btoa(unescape(encodeURIComponent(JSON.stringify({ type: 'prompt', text: entry.text }))));
+            copyToClipboard(location.origin + location.pathname + '#share=' + encoded, '🔗 シェアURLをコピーしました！');
+        } catch(e) { showToast('❌ URLの生成に失敗しました'); }
+    }
+
+    function useSaved(id) {
+        const entry = JSON.parse(localStorage.getItem('saved_prompts') || '[]').find(s => s.id === id);
+        if (!entry) return;
+        state.generatedPrompt = entry.text;
+        document.getElementById('result-text').textContent = entry.text;
+        document.getElementById('share-url-box').style.display = 'none';
+        switchTab('builder');
+        goStep(4);
+    }
+
+    function deleteSaved(id) {
+        localStorage.setItem('saved_prompts', JSON.stringify(
+            JSON.parse(localStorage.getItem('saved_prompts') || '[]').filter(s => s.id !== id)
+        ));
+        loadSavedList();
+        showToast('削除しました');
+    }
+
+    // ============================================================
+    // カスタムテンプレート
+    // ============================================================
+    function saveCustomTemplate() {
+        const name = document.getElementById('custom-name').value.trim();
+        const body = document.getElementById('custom-body').value.trim();
+        if (!name || !body) { showToast('名前と本文を入力してください'); return; }
+        const keys = [...new Set([...body.matchAll(/\{\{([^}]+)\}\}/g)].map(m => m[1]))];
+        const fields = keys.map(k => ({ key: k, label: k, type: k.length > 15 ? 'textarea' : 'text', placeholder: k + 'を入力' }));
+        const template = { id: 'custom_' + Date.now(), name, preview: body.substring(0, 50) + '...', fields, template: body };
+        const customs = JSON.parse(localStorage.getItem('custom_templates') || '[]');
+        customs.unshift(template);
+        localStorage.setItem('custom_templates', JSON.stringify(customs));
+        document.getElementById('custom-name').value = '';
+        document.getElementById('custom-body').value = '';
+        document.getElementById('custom-preview-wrap').style.display = 'none';
+        state.customAttachments = [];
+        renderAttachmentList('custom-attach-list', state.customAttachments);
+        showToast('✅ テンプレートを保存しました！');
+        loadCustomTemplates();
+    }
+
+    function loadCustomTemplates() {
+        const customs = JSON.parse(localStorage.getItem('custom_templates') || '[]');
+        TEMPLATES.custom = customs;
+        const container = document.getElementById('custom-template-list');
+        if (!container) return customs;
+        if (customs.length === 0) {
+            container.innerHTML = '<div class="empty-state"><div class="icon">📋</div><p>まだカスタムテンプレートはありません</p></div>';
+            return customs;
+        }
+        container.innerHTML = '<div class="saved-list">' + customs.map(t => `
+            <div class="saved-item">
+                <div class="saved-item-info">
+                    <div class="saved-item-name">${escHtml(t.name)}</div>
+                    <div class="saved-item-preview">${escHtml(t.template.substring(0,50))}...</div>
+                </div>
+                <div class="saved-item-btns">
+                    <button class="btn-tiny btn-share-tiny" onclick="shareTemplateViaUrl('${t.id}')">🔗 シェア</button>
+                    <button class="btn-tiny btn-del" onclick="deleteCustomTemplate('${t.id}')">削除</button>
+                </div>
+            </div>
+        `).join('') + '</div>';
+        return customs;
+    }
+
+    function deleteCustomTemplate(id) {
+        localStorage.setItem('custom_templates', JSON.stringify(
+            JSON.parse(localStorage.getItem('custom_templates') || '[]').filter(t => t.id !== id)
+        ));
+        loadCustomTemplates();
+        showToast('削除しました');
+    }
+
+    function exportTemplates() {
+        const customs = JSON.parse(localStorage.getItem('custom_templates') || '[]');
+        if (customs.length === 0) { showToast('エクスポートするテンプレートがありません'); return; }
+        const blob = new Blob([JSON.stringify(customs, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = 'prompt-templates.json';
+        document.body.appendChild(a); a.click();
+        document.body.removeChild(a); URL.revokeObjectURL(url);
+        showToast('📤 エクスポートしました');
+    }
+
+    function importTemplates(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = e => {
+            try {
+                const imported = JSON.parse(e.target.result);
+                if (!Array.isArray(imported)) throw new Error();
+                const customs = JSON.parse(localStorage.getItem('custom_templates') || '[]');
+                let count = 0;
+                imported.forEach((t, i) => {
+                    if (t.name && t.template) { t.id = 'custom_' + Date.now() + '_' + i; customs.unshift(t); count++; }
+                });
+                localStorage.setItem('custom_templates', JSON.stringify(customs));
+                loadCustomTemplates();
+                showToast('✅ ' + count + '件のテンプレートをインポートしました');
+            } catch(e) { showToast('❌ ファイルの読み込みに失敗しました'); }
+        };
+        reader.readAsText(file);
+        event.target.value = '';
+    }
+
+    function updateCustomPreview() {
+        const body = document.getElementById('custom-body').value;
+        const wrap = document.getElementById('custom-preview-wrap');
+        if (body.trim()) {
+            wrap.style.display = '';
+            document.getElementById('custom-preview-text').innerHTML =
+                escHtml(body).replace(/\{\{([^}]+)\}\}/g, '<span class="highlight">{{$1}}</span>');
+        } else { wrap.style.display = 'none'; }
+    }
+
+    // ============================================================
+    // 添付ファイル（builder / custom 共通）
+    // ============================================================
+    function handleFileAttach(eventOrFake, target) {
+        const files = Array.from(eventOrFake.target.files || []);
+        const allowed = ['application/pdf', 'image/png', 'image/jpeg'];
+        const list = target === 'custom' ? state.customAttachments : state.attachments;
+        const listId = target === 'custom' ? 'custom-attach-list' : 'attach-list';
+        files.forEach(file => {
+            if (!allowed.includes(file.type) && !/\.(pdf|png|jpg|jpeg)$/i.test(file.name)) {
+                showToast(file.name + ' はPDF・PNG・JPGのみ添付できます'); return;
+            }
+            if (file.size > 10 * 1024 * 1024) { showToast(file.name + ' は10MB以下にしてください'); return; }
+            const reader = new FileReader();
+            reader.onload = e => {
+                list.push({ name: file.name, type: file.type, dataUrl: e.target.result });
+                renderAttachmentList(listId, list);
+            };
+            reader.readAsDataURL(file);
+        });
+        if (eventOrFake.target.value !== undefined) eventOrFake.target.value = '';
+    }
+
+    function removeAttachment(index, target) {
+        if (target === 'custom') {
+            state.customAttachments.splice(index, 1);
+            renderAttachmentList('custom-attach-list', state.customAttachments);
+        } else {
+            state.attachments.splice(index, 1);
+            renderAttachmentList('attach-list', state.attachments);
+        }
+    }
+
+    function renderAttachmentList(listId, list) {
+        const el = document.getElementById(listId);
+        if (!el) return;
+        const target = listId === 'custom-attach-list' ? 'custom' : 'builder';
+        el.innerHTML = list.map((att, i) => {
+            const isImage = att.type.startsWith('image/');
+            const preview = isImage
+                ? '<img class="attach-thumb" src="' + att.dataUrl + '" alt="' + escHtml(att.name) + '">'
+                : '<span class="attach-pdf-icon">📄</span>';
+            return '<div class="attach-item">' + preview +
+                '<span class="attach-name" title="' + escHtml(att.name) + '">' + escHtml(att.name) + '</span>' +
+                '<button class="attach-del" onclick="removeAttachment(' + i + ',\'' + target + '\')" title="削除">✕</button>' +
+                '</div>';
+        }).join('');
+    }
+
+    function renderResultAttachments() {
+        const wrap = document.getElementById('result-attachments');
+        const list = document.getElementById('result-attach-list');
+        if (state.attachments.length === 0) { wrap.style.display = 'none'; return; }
+        wrap.style.display = 'block';
+        list.innerHTML = state.attachments.map(att => {
+            const isImage = att.type.startsWith('image/');
+            const preview = isImage ? '<img class="attach-result-thumb" src="' + att.dataUrl + '" alt="' + escHtml(att.name) + '">' : '📄 ';
+            return '<div class="attach-result-item">' + preview + '<span>' + escHtml(att.name) + '</span></div>';
+        }).join('');
+    }
+
+    function onDragOver(e, zoneId) {
+        e.preventDefault();
+        document.getElementById(zoneId).classList.add('dragover');
+    }
+    function onDragLeave(e, zoneId) {
+        document.getElementById(zoneId).classList.remove('dragover');
+    }
+    function onDrop(e, target) {
+        e.preventDefault();
+        const zoneId = target === 'custom' ? 'custom-attach-zone' : 'attach-zone';
+        document.getElementById(zoneId).classList.remove('dragover');
+        handleFileAttach({ target: { files: Array.from(e.dataTransfer.files) } }, target);
+    }
+
+    // ============================================================
+    // タブ切り替え
+    // ============================================================
+    function switchTab(id) {
+        document.querySelectorAll('.tab-btn').forEach((btn, i) => {
+            btn.classList.toggle('active', ['builder','custom','saved'][i] === id);
+        });
+        document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+        document.getElementById('tab-' + id).classList.add('active');
+        if (id === 'saved') loadSavedList();
+        if (id === 'custom') loadCustomTemplates();
+    }
+
+    // ============================================================
+    // ユーティリティ
+    // ============================================================
+    function copyToClipboard(text, msg) {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(() => showToast(msg));
+        } else {
+            const ta = document.createElement('textarea');
+            ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+            document.body.appendChild(ta); ta.select(); document.execCommand('copy');
+            document.body.removeChild(ta); showToast(msg);
+        }
+    }
+
+    function showToast(msg) {
+        const toast = document.getElementById('toast');
+        toast.textContent = msg;
+        toast.classList.add('show');
+        setTimeout(() => toast.classList.remove('show'), 2500);
+    }
+
+    function escHtml(str) {
+        return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    init();
+    </script>
 </body>
 </html>
